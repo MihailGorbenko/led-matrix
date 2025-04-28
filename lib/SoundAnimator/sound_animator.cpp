@@ -63,7 +63,7 @@ void SoundAnimator::update() {
     }
 
     unsigned long currentTime = millis();
-    if (currentTime - lastUpdateTime >= updateInterval) {
+    if (currentTime - lastUpdateTime >= UPDATE_INTERVAL) {
         lastUpdateTime = currentTime;
         renderAmplitude(currentColorFunc); // Вызываем визуализацию с текущей функцией цвета
     }
@@ -75,7 +75,7 @@ void SoundAnimator::animationTask(void* param) {
 
     while (true) {
         animator->update();
-        vTaskDelay(pdMS_TO_TICKS(animator->updateInterval)); // Задержка в миллисекундах
+        vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL)); // Задержка в миллисекундах
     }
 }
 

@@ -16,7 +16,6 @@ private:
     AudioAnalyzer& audioAnalyzer;
 
     unsigned long lastUpdateTime; // Время последнего обновления
-    const unsigned long updateInterval = 1000 / 40; // Интервал обновления для 60 Гц
     bool isAnimating; // Флаг состояния анимации
     AnimationType currentAnimation; // Текущая анимация
     std::function<CRGB(uint8_t)> currentColorFunc; // Текущая функция цвета
