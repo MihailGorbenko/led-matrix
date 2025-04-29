@@ -10,21 +10,6 @@ AudioAnalyzer::AudioAnalyzer(AsyncSerial& asyncSerial)
     memset(bands, 0, sizeof(bands));
     memset(smoothedBands, 0, sizeof(smoothedBands));
 
-    // Инициализация NVS
-    serial.println("[NVS] Initializing NVS...");
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        serial.println("[NVS] NVS corrupted, erasing...");
-        nvs_flash_erase();
-        err = nvs_flash_init();
-    }
-
-    if (err == ESP_OK) {
-        serial.println("[NVS] NVS initialized successfully.");
-    } else {
-        serial.printf("[NVS] Failed to initialize NVS. Error: %d\n", err);
-        while (true); // Остановить выполнение, если NVS не инициализировался
-    }
 
     preferences.begin("audioanalyzer", false); // Открываем пространство имен
     loadSettings(); // Загрузка сохранённых настроек
@@ -39,16 +24,16 @@ AudioAnalyzer::~AudioAnalyzer() {
 // Загрузка настроек из памяти
 void AudioAnalyzer::loadSettings() {
     sensitivityReduction = preferences.getFloat("sensReduct", 5.0);
-    serial.printf("[NVS] Loaded sensReduct: %.2f\n", sensitivityReduction);
+    ////serial.printf("[NVS] Loaded sensReduct: %.2f\n", sensitivityReduction);
 
     lowFreqGain = preferences.getFloat("lowGain", 1.0);
-    serial.printf("[NVS] Loaded lowGain: %.2f\n", lowFreqGain);
+   // serial.printf("[NVS] Loaded lowGain: %.2f\n", lowFreqGain);
 
     midFreqGain = preferences.getFloat("midGain", 1.0);
-    serial.printf("[NVS] Loaded midGain: %.2f\n", midFreqGain);
+   // serial.printf("[NVS] Loaded midGain: %.2f\n", midFreqGain);
 
     highFreqGain = preferences.getFloat("highGain", 1.0);
-    serial.printf("[NVS] Loaded highGain: %.2f\n", highFreqGain);
+   // serial.printf("[NVS] Loaded highGain: %.2f\n", highFreqGain);
 }
 
 // Сохранение настройки в память
