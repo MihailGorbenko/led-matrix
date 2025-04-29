@@ -2,60 +2,59 @@
 #include <nvs_flash.h>
 
 // Конструктор
-AudioAnalyzer::AudioAnalyzer()
-    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY), // Инициализация FFT с заданными параметрами
-      maxAmplitude(1), // Начальное значение максимальной амплитуды
-      sensitivityReduction(5.0), // Коэффициент уменьшения чувствительности
-      lowFreqGain(1.0), midFreqGain(1.0), highFreqGain(1.0), // Усиление для низких, средних и высоких частот
-      dynamicNoiseThreshold(0.0) { // Инициализация динамического порога
-    memset(bands, 0, sizeof(bands)); // Инициализация массива полос нулями
-    memset(smoothedBands, 0, sizeof(smoothedBands)); // Инициализация сглаженных полос нулями
+AudioAnalyzer::AudioAnalyzer(AsyncSerial& asyncSerial)
+    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY), // Инициализация FFT
+      maxAmplitude(1), sensitivityReduction(5.0),
+      lowFreqGain(1.0), midFreqGain(1.0), highFreqGain(1.0),
+      dynamicNoiseThreshold(0.0), serial(asyncSerial) { // Инициализация AsyncSerial
+    memset(bands, 0, sizeof(bands));
+    memset(smoothedBands, 0, sizeof(smoothedBands));
 
     // Инициализация NVS
-    Serial.println("[NVS] Initializing NVS...");
+    serial.println("[NVS] Initializing NVS...");
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        Serial.println("[NVS] NVS corrupted, erasing...");
+        serial.println("[NVS] NVS corrupted, erasing...");
         nvs_flash_erase();
         err = nvs_flash_init();
     }
 
     if (err == ESP_OK) {
-        Serial.println("[NVS] NVS initialized successfully.");
+        serial.println("[NVS] NVS initialized successfully.");
     } else {
-        Serial.printf("[NVS] Failed to initialize NVS. Error: %d\n", err);
+        serial.printf("[NVS] Failed to initialize NVS. Error: %d\n", err);
         while (true); // Остановить выполнение, если NVS не инициализировался
     }
 
-    preferences.begin("audioanalyzer", false); // Открываем пространство имен для чтения и записи
+    preferences.begin("audioanalyzer", false); // Открываем пространство имен
     loadSettings(); // Загрузка сохранённых настроек
 }
 
 // Деструктор
 AudioAnalyzer::~AudioAnalyzer() {
     preferences.end(); // Закрываем пространство имен
-    Serial.println("[NVS] Preferences closed.");
+    serial.println("[NVS] Preferences closed.");
 }
 
 // Загрузка настроек из памяти
 void AudioAnalyzer::loadSettings() {
     sensitivityReduction = preferences.getFloat("sensReduct", 5.0);
-    Serial.printf("[NVS] Loaded sensReduct: %.2f\n", sensitivityReduction);
+    serial.printf("[NVS] Loaded sensReduct: %.2f\n", sensitivityReduction);
 
     lowFreqGain = preferences.getFloat("lowGain", 1.0);
-    Serial.printf("[NVS] Loaded lowGain: %.2f\n", lowFreqGain);
+    serial.printf("[NVS] Loaded lowGain: %.2f\n", lowFreqGain);
 
     midFreqGain = preferences.getFloat("midGain", 1.0);
-    Serial.printf("[NVS] Loaded midGain: %.2f\n", midFreqGain);
+    serial.printf("[NVS] Loaded midGain: %.2f\n", midFreqGain);
 
     highFreqGain = preferences.getFloat("highGain", 1.0);
-    Serial.printf("[NVS] Loaded highGain: %.2f\n", highFreqGain);
+    serial.printf("[NVS] Loaded highGain: %.2f\n", highFreqGain);
 }
 
 // Сохранение настройки в память
 void AudioAnalyzer::saveSetting(const char* key, float value) {
     preferences.putFloat(key, value);
-    Serial.printf("[NVS] Saved %s: %.2f\n", key, value);
+    serial.printf("[NVS] Saved %s: %.2f\n", key, value);
 }
 
 // Установка общей чувствительности

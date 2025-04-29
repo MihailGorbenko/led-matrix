@@ -3,17 +3,18 @@
 
 #include <FastLED.h>
 #include "config.hpp" // Подключаем файл конфигурации
+#include "async_serial.hpp" // Подключаем класс AsyncSerial
 
 class LedMatrix {
 private:
     static const int width = MATRIX_WIDTH;  // Ширина матрицы
     static const int height = MATRIX_HEIGHT; // Высота матрицы
     CRGB leds[NUM_LEDS]; // Инкапсулированный массив светодиодов
+    AsyncSerial& serial; // Добавляем член класса для хранения ссылки на AsyncSerial
 
 public:
     // Конструктор
-    LedMatrix();
-
+    LedMatrix(AsyncSerial& asyncSerial);
     // Преобразование координат
     int XY(int x, int y);
 
@@ -28,6 +29,8 @@ public:
 
     // Обновление матрицы
     void update();
+
+    void off();
 
     // Доступ к массиву светодиодов
     CRGB* getLeds();

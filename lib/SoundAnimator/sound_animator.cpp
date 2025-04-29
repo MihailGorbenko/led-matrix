@@ -1,10 +1,14 @@
 #include "sound_animator.hpp"
 #include "config.hpp" // Подключаем файл конфигурации
+#include "async_serial.hpp"
 
 // Конструктор
-SoundAnimator::SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer)
-    : ledMatrix(matrix), audioAnalyzer(analyzer), lastUpdateTime(0), isAnimating(false), currentAnimation(COLOR_AMPLITUDE), currentColorFunc(nullptr), animationTaskHandle(nullptr) {
-    // Настраиваем общую чувствительность
+SoundAnimator::SoundAnimator(LedMatrix& matrix,AsyncSerial& asyncSerial,AudioAnalyzer& audioAnalyzer)
+     // Инициализация членов класса
+     : audioAnalyzer(audioAnalyzer), ledMatrix(matrix),
+     lastUpdateTime(0), isAnimating(false), currentAnimation(COLOR_AMPLITUDE),
+     currentColorFunc(nullptr), animationTaskHandle(nullptr), serial(asyncSerial) {
+        // Настраиваем общую чувствительность
     audioAnalyzer.setSensitivityReduction(5.0);
 
     // Настраиваем коэффициенты усиления для частот
@@ -38,7 +42,7 @@ void SoundAnimator::renderAmplitude(std::function<CRGB(uint8_t)> colorFunc) {
 }
 
 // Отображение визуализации амплитуды с цветами
-void SoundAnimator::startColorAmplitude() {
+void SoundAnimator::setColorAmplitudeAnimation() {
     isAnimating = true; // Устанавливаем флаг анимации
     currentAnimation = COLOR_AMPLITUDE; // Устанавливаем текущую анимацию
     currentColorFunc = [](uint8_t height) {
@@ -48,7 +52,7 @@ void SoundAnimator::startColorAmplitude() {
 }
 
 // Отображение визуализации амплитуды с зелёным цветом
-void SoundAnimator::startGreenAmplitude() {
+void SoundAnimator::setGreenAmplitudeAnimation() {
     isAnimating = true; // Устанавливаем флаг анимации
     currentAnimation = GREEN_AMPLITUDE; // Устанавливаем текущую анимацию
     currentColorFunc = [](uint8_t) {
@@ -91,6 +95,7 @@ void SoundAnimator::startTask() {
             &animationTaskHandle, // Указатель на задачу
             1                // Ядро, на котором будет выполняться задача
         );
+        isAnimating = true; // Устанавливаем флаг анимации
     }
 }
 
@@ -99,5 +104,10 @@ void SoundAnimator::stopTask() {
     if (animationTaskHandle != nullptr) {
         vTaskDelete(animationTaskHandle);
         animationTaskHandle = nullptr;
+        isAnimating = false;
+        // Очищаем матрицу при остановке задачи
+        ledMatrix.off();
+    
+        
     }
 }

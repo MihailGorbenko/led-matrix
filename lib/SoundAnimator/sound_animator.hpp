@@ -1,19 +1,22 @@
-#ifndef SOUND_ANIMATOR_H
-#define SOUND_ANIMATOR_H
+#ifndef SOUND_ANIMATOR_HPP
+#define SOUND_ANIMATOR_HPP
 
 #include <functional>
 #include "led_matrix.hpp"
 #include "audio_analyzer.hpp"
+#include "matrix_task.hpp"
+#include "async_serial.hpp"
 
 enum AnimationType {
     COLOR_AMPLITUDE,
     GREEN_AMPLITUDE
 };
 
-class SoundAnimator {
+class SoundAnimator : public MatrixTask {
 private:
     LedMatrix& ledMatrix;
-    AudioAnalyzer& audioAnalyzer;
+    AsyncSerial& serial;
+    AudioAnalyzer audioAnalyzer; // Объект AudioAnalyzer создаётся внутри класса
 
     unsigned long lastUpdateTime; // Время последнего обновления
     bool isAnimating; // Флаг состояния анимации
@@ -30,13 +33,18 @@ private:
     TaskHandle_t animationTaskHandle = nullptr;
 
 public:
-    SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer);
+    SoundAnimator(LedMatrix& matrix, AsyncSerial& asyncSerial, AudioAnalyzer& audioAnalyzer);
 
-    void startColorAmplitude();
-    void startGreenAmplitude();
+    // Методы управления анимацией
+    void setColorAmplitudeAnimation();
+    void setGreenAmplitudeAnimation();
     void update();
-    void startTask();
-    void stopTask();
+
+    // Реализация методов MatrixTask
+    void startTask() override;
+    void stopTask() override;
+
+
 };
 
-#endif // SOUND_ANIMATOR_H
+#endif // SOUND_ANIMATOR_HPP

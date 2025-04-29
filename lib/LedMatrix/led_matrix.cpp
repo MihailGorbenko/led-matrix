@@ -1,7 +1,7 @@
 #include "led_matrix.hpp"
 
 // Конструктор
-LedMatrix::LedMatrix() {
+LedMatrix::LedMatrix(AsyncSerial& asyncSerial) : serial(asyncSerial) {
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
     FastLED.clear();
     FastLED.setBrightness(BRIGHTNESS); // Устанавливаем начальную яркость из config.hpp
@@ -17,6 +17,7 @@ void LedMatrix::clear() {
     for (int i = 0; i < width * height; i++) {
         leds[i] = CRGB::Black;
     }
+     // Обновляем матрицу после очистки
 }
 
 // Установка цвета светодиода
@@ -35,6 +36,11 @@ void LedMatrix::setBrightness(uint8_t brightness) {
 // Обновление матрицы
 void LedMatrix::update() {
     FastLED.show();
+}
+
+void LedMatrix::off() {
+    FastLED.clear(); // Очищаем матрицу
+    FastLED.show();  // Обновляем матрицу
 }
 
 // Доступ к массиву светодиодов

@@ -5,6 +5,7 @@
 #include "config.hpp" // Подключаем файл конфигурации
 #include <Arduino.h>
 #include <Preferences.h>
+#include "async_serial.hpp"
 
 class AudioAnalyzer {
 private:
@@ -19,6 +20,7 @@ private:
     uint16_t smoothedBands[MATRIX_WIDTH];
     ArduinoFFT<double> FFT;
     Preferences preferences;
+    AsyncSerial& serial; // Добавляем член класса для хранения ссылки на AsyncSerial
     double maxAmplitude;
     double sensitivityReduction;
     double lowFreqGain;
@@ -27,7 +29,7 @@ private:
     double dynamicNoiseThreshold;
 
 public:
-    AudioAnalyzer();
+    AudioAnalyzer(AsyncSerial& asyncSerial);
     ~AudioAnalyzer();
     void processAudio(int micPin);
     void setSensitivityReduction(double reduction);
