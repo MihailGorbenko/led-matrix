@@ -1,10 +1,13 @@
 #include "led_matrix.hpp"
 
-// Конструктор
-LedMatrix::LedMatrix(AsyncSerial& asyncSerial) : serial(asyncSerial) {
+// Конструктор — только сохраняем ссылки
+LedMatrix::LedMatrix(AsyncSerial& asyncSerial) : serial(asyncSerial) {}
+
+// Инициализация FastLED — вызывать в setup()
+void LedMatrix::begin() {
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
-    FastLED.clear();
-    FastLED.setBrightness(BRIGHTNESS); // Устанавливаем начальную яркость из config.hpp
+    FastLED.setBrightness(BRIGHTNESS);
+    clear(); // Очистка и show
 }
 
 // Преобразование координат (сверху вниз, слева направо)
@@ -12,18 +15,15 @@ int LedMatrix::XY(int x, int y) {
     return x * height + y;
 }
 
-// Очистка матрицы
+// Очистка матрицы (fill_solid)
 void LedMatrix::clear() {
-    for (int i = 0; i < width * height; i++) {
-        leds[i] = CRGB::Black;
-    }
-     // Обновляем матрицу после очистки
+    fill_solid(leds, width * height, CRGB::Black);
 }
 
-// Установка цвета светодиода
+// Установка цвета
 void LedMatrix::setPixel(int x, int y, const CRGB& color) {
     if (x < 0 || x >= width || y < 0 || y >= height) {
-        return; // Игнорируем некорректные координаты
+        return;
     }
     leds[XY(x, y)] = color;
 }
@@ -33,17 +33,18 @@ void LedMatrix::setBrightness(uint8_t brightness) {
     FastLED.setBrightness(brightness);
 }
 
-// Обновление матрицы
+// Обновление матрицы (показать)
 void LedMatrix::update() {
     FastLED.show();
 }
 
+// Полное выключение (очистить + показать)
 void LedMatrix::off() {
-    FastLED.clear(); // Очищаем матрицу
-    FastLED.show();  // Обновляем матрицу
+    clear();
+    FastLED.show();
 }
 
-// Доступ к массиву светодиодов
+// Получить массив пикселей
 CRGB* LedMatrix::getLeds() {
     return leds;
 }
