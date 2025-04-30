@@ -13,38 +13,37 @@ enum AnimationType {
 };
 
 class SoundAnimator : public MatrixTask {
-private:
-    LedMatrix& ledMatrix;
-    AsyncSerial& serial;
-    AudioAnalyzer audioAnalyzer; // Объект AudioAnalyzer создаётся внутри класса
-
-    unsigned long lastUpdateTime; // Время последнего обновления
-    bool isAnimating; // Флаг состояния анимации
-    AnimationType currentAnimation; // Текущая анимация
-    std::function<CRGB(uint8_t)> currentColorFunc; // Текущая функция цвета
-
-    // Общий метод для визуализации амплитуды
-    void renderAmplitude(std::function<CRGB(uint8_t)> colorFunc);
-
-    // Задача для обновления анимации
-    static void animationTask(void* param);
-
-    // Указатель на задачу FreeRTOS
-    TaskHandle_t animationTaskHandle = nullptr;
-
 public:
-    SoundAnimator(LedMatrix& matrix, AsyncSerial& asyncSerial, AudioAnalyzer& audioAnalyzer);
+    SoundAnimator(LedMatrix& matrix, AsyncSerial& asyncSerial, AudioAnalyzer& analyzer);
 
     // Методы управления анимацией
     void setColorAmplitudeAnimation();
     void setGreenAmplitudeAnimation();
     void update();
 
-    // Реализация методов MatrixTask
+    // Управление задачей
     void startTask() override;
     void stopTask() override;
 
+    // Получение доступа к анализатору (по запросу извне)
+    AudioAnalyzer& getAnalyzer();
 
+private:
+    LedMatrix& ledMatrix;
+    AsyncSerial& serial;
+    AudioAnalyzer& audioAnalyzer;  // исправлено: теперь это ссылка
+
+    unsigned long lastUpdateTime = 0;
+    bool isAnimating = false;
+    AnimationType currentAnimation = COLOR_AMPLITUDE;
+    std::function<CRGB(uint8_t)> currentColorFunc;
+
+    // Общий метод визуализации
+    void renderAmplitude(std::function<CRGB(uint8_t)> colorFunc);
+
+    // Задача анимации
+    static void animationTask(void* param);
+    TaskHandle_t animationTaskHandle = nullptr;
 };
 
 #endif // SOUND_ANIMATOR_HPP
