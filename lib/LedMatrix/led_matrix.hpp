@@ -1,39 +1,28 @@
-#ifndef LED_MATRIX_H
-#define LED_MATRIX_H
+#ifndef LED_MATRIX_HPP
+#define LED_MATRIX_HPP
 
 #include <FastLED.h>
-#include "config.hpp" // Подключаем файл конфигурации
-#include "async_serial.hpp" // Подключаем класс AsyncSerial
+#include "config.hpp"
+#include "async_serial.hpp"
 
 class LedMatrix {
 private:
-    static const int width = MATRIX_WIDTH;  // Ширина матрицы
-    static const int height = MATRIX_HEIGHT; // Высота матрицы
-    CRGB leds[NUM_LEDS]; // Инкапсулированный массив светодиодов
-    AsyncSerial& serial; // Добавляем член класса для хранения ссылки на AsyncSerial
+    CRGB leds[NUM_LEDS];
+    int width = MATRIX_WIDTH;
+    int height = MATRIX_HEIGHT;
+    AsyncSerial& serial;
 
 public:
-    // Конструктор
-    LedMatrix(AsyncSerial& asyncSerial);
-    // Преобразование координат
-    int XY(int x, int y);
-
-    // Очистка матрицы
-    void clear();
-
-    // Установка цвета светодиода
-    void setPixel(int x, int y, const CRGB& color);
-
-    // Установка яркости
-    void setBrightness(uint8_t brightness);
-
-    // Обновление матрицы
-    void update();
-
-    void off();
-
-    // Доступ к массиву светодиодов
-    CRGB* getLeds();
+    LedMatrix(AsyncSerial& asyncSerial); // Конструктор (без инициализации FastLED)
+    
+    void begin();                        // Явная инициализация FastLED (в setup)
+    void clear();                        // Очистка матрицы и show()
+    void setPixel(int x, int y, const CRGB& color); // Установка цвета
+    void setBrightness(uint8_t brightness);         // Установка яркости
+    void update();                       // Применить изменения
+    void off();                          // Очистить и выключить
+    CRGB* getLeds();                     // Доступ к массиву
+    int XY(int x, int y);                // Преобразование координат
 };
 
-#endif // LED_MATRIX_H
+#endif // LED_MATRIX_HPP
