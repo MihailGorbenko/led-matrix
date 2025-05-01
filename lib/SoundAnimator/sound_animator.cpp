@@ -1,11 +1,9 @@
 #include "sound_animator.hpp"
 #include "config.hpp"
-#include "async_serial.hpp"
 
 // Конструктор
-SoundAnimator::SoundAnimator(LedMatrix& matrix, AsyncSerial& asyncSerial, AudioAnalyzer& analyzer)
+SoundAnimator::SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer)
     : ledMatrix(matrix),
-      serial(asyncSerial),
       audioAnalyzer(analyzer),
       lastUpdateTime(0),
       isAnimating(false),
@@ -13,11 +11,7 @@ SoundAnimator::SoundAnimator(LedMatrix& matrix, AsyncSerial& asyncSerial, AudioA
       currentColorFunc(nullptr),
       animationTaskHandle(nullptr)
 {
-    // Настраиваем чувствительность и усиление частот
-    audioAnalyzer.setSensitivityReduction(5.0);
-    audioAnalyzer.setLowFreqGain(0.8);
-    audioAnalyzer.setMidFreqGain(1.1);
-    audioAnalyzer.setHighFreqGain(1.1);
+
 }
 
 // Общий метод для визуализации амплитуды
@@ -80,6 +74,7 @@ void SoundAnimator::animationTask(void* param) {
 // Запуск задачи
 void SoundAnimator::startTask() {
     if (animationTaskHandle == nullptr) {
+        Serial.println("[SoundAnimator] Starting animation task...");
         xTaskCreatePinnedToCore(
             animationTask,
             "AnimationTask",
@@ -90,15 +85,25 @@ void SoundAnimator::startTask() {
             1 // Ядро 1 — можно настроить
         );
         isAnimating = true;
+        Serial.println("[SoundAnimator] Animation task started.");
+    } else {
+        Serial.println("[SoundAnimator] Animation task is already running.");
     }
 }
 
 // Остановка задачи
 void SoundAnimator::stopTask() {
     if (animationTaskHandle != nullptr) {
+        Serial.println("[SoundAnimator] Stopping animation task...");
         vTaskDelete(animationTaskHandle);
         animationTaskHandle = nullptr;
         isAnimating = false;
-        ledMatrix.off();  // Очистка матрицы при остановке
+
+        ledMatrix.clear();  // Очищаем матрицу
+        ledMatrix.update(); // Применяем изменения
+
+        Serial.println("[SoundAnimator] Animation task stopped.");
+    } else {
+        Serial.println("[SoundAnimator] No animation task to stop.");
     }
 }

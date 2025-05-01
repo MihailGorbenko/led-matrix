@@ -1,7 +1,7 @@
 #include "led_matrix.hpp"
 
 // Конструктор — только сохраняем ссылки
-LedMatrix::LedMatrix(AsyncSerial& asyncSerial) : serial(asyncSerial) {}
+LedMatrix::LedMatrix() {}
 
 // Инициализация FastLED — вызывать в setup()
 void LedMatrix::begin() {

@@ -2,15 +2,13 @@
 #include "audio_analyzer.hpp"
 #include "led_matrix.hpp"
 #include "sound_animator.hpp"
-#include "async_serial.hpp"
 #include "config.hpp" // Подключаем файл конфигурации
 #include <nvs_flash.h>
 
 // Создаём объекты
-AsyncSerial asyncSerial; // Создаём объект для асинхронного вывода в Serial
-LedMatrix ledMatrix(asyncSerial);
-AudioAnalyzer audioAnalyzer(asyncSerial); // Создаём объект AudioAnalyzer
-SoundAnimator soundAnimator(ledMatrix,asyncSerial,audioAnalyzer); // Получаем ссылку на AudioAnalyzer
+LedMatrix ledMatrix;
+AudioAnalyzer audioAnalyzer; // Создаём объект AudioAnalyzer
+SoundAnimator soundAnimator(ledMatrix,audioAnalyzer); // Получаем ссылку на AudioAnalyzer
 MatrixTask* currentMatrixTask = &soundAnimator; // Указатель на задачу матрицы
 
 
@@ -20,11 +18,17 @@ void setup() {
     analogReadResolution(12); 
     analogSetAttenuation(ADC_11db);
 
-    // Устанавливаем яркость матрицы
+    ledMatrix.begin(); // Инициализация матрицы
     ledMatrix.setBrightness(BRIGHTNESS);
 
+    audioAnalyzer.begin(); // Инициализация анализатора звука
+    audioAnalyzer.setSensitivityReduction(5.0); // Настройка чувствительности
+    audioAnalyzer.setLowFreqGain(0.8); // Настройка усиления низких частот      
+    audioAnalyzer.setMidFreqGain(1.1); // Настройка усиления средних частот
+    audioAnalyzer.setHighFreqGain(1.1); // Настройка усиления высоких частот
+
     // Запускаем анимацию
-    soundAnimator.setColorAmplitudeAnimation();
+    soundAnimator.setGreenAmplitudeAnimation();
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
@@ -33,6 +37,7 @@ void setup() {
 void loop() {
     // Основной цикл остаётся пустым, так как анимация выполняется в задаче
     delay(1000); // Добавляем небольшую задержку для снижения нагрузки
+   
 
 }
 

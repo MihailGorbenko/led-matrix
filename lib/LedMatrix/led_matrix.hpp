@@ -3,17 +3,15 @@
 
 #include <FastLED.h>
 #include "config.hpp"
-#include "async_serial.hpp"
 
 class LedMatrix {
 private:
     CRGB leds[NUM_LEDS];
     int width = MATRIX_WIDTH;
     int height = MATRIX_HEIGHT;
-    AsyncSerial& serial;
 
 public:
-    LedMatrix(AsyncSerial& asyncSerial); // Конструктор (без инициализации FastLED)
+    LedMatrix(); // Конструктор (без инициализации FastLED)
     
     void begin();                        // Явная инициализация FastLED (в setup)
     void clear();                        // Очистка матрицы и show()

@@ -5,7 +5,7 @@
 #include "led_matrix.hpp"
 #include "audio_analyzer.hpp"
 #include "matrix_task.hpp"
-#include "async_serial.hpp"
+
 
 enum AnimationType {
     COLOR_AMPLITUDE,
@@ -14,7 +14,7 @@ enum AnimationType {
 
 class SoundAnimator : public MatrixTask {
 public:
-    SoundAnimator(LedMatrix& matrix, AsyncSerial& asyncSerial, AudioAnalyzer& analyzer);
+    SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer);
 
     // Методы управления анимацией
     void setColorAmplitudeAnimation();
@@ -30,7 +30,6 @@ public:
 
 private:
     LedMatrix& ledMatrix;
-    AsyncSerial& serial;
     AudioAnalyzer& audioAnalyzer;  // исправлено: теперь это ссылка
 
     unsigned long lastUpdateTime = 0;
