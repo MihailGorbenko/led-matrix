@@ -17,6 +17,7 @@ MatrixTask* currentMatrixTask = &soundAnimator; // Указатель на за�
 void setup() {
     Serial.begin(115200);
     pinMode(MIC_PIN, INPUT);
+    analogReadResolution(12); 
     analogSetAttenuation(ADC_11db);
 
     // Устанавливаем яркость матрицы
