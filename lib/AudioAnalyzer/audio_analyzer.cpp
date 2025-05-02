@@ -3,221 +3,150 @@
 #include <cmath>
 #include <Arduino.h>
 
-// --- Конструктор ---
+// --- Константы по умолчанию ---
+const float DEFAULT_SENSITIVITY_REDUCTION = 5.0f;
+const float DEFAULT_LOW_GAIN = 1.0f;
+const float DEFAULT_MID_GAIN = 1.0f;
+const float DEFAULT_HIGH_GAIN = 1.0f;
+const float DEFAULT_ALPHA = 0.2f;
+const float DEFAULT_FMIN = 50.0f;
+const float DEFAULT_FMAX = 10000.0f;
+const float DEFAULT_NOISE_THRESHOLD_RATIO = 0.25f;
+const float DEFAULT_BAND_DECAY = 0.95f;
+const int   DEFAULT_BAND_CEILING = 1000;
+
 AudioAnalyzer::AudioAnalyzer()
     : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY)
 {
-    // Инициализация коэффициентов с дефолтными значениями
-    sensitivityReduction = 5.0f; // Коэффициент для уменьшения чувствительности
-    lowFreqGain = 1.0f;          // Усиление низких частот
-    midFreqGain = 1.0f;          // Усиление средних частот
-    highFreqGain = 1.0f;         // Усиление высоких частот
-    alpha = 0.2f;                // Коэффициент для сглаживания аудиосигнала
-    fMin = 50.0f;                // Минимальная частота для анализа
-    fMax = 10000.0f;             // Максимальная частота для анализа
-    noiseThresholdRatio = 0.25f; // Порог шума для определения амплитуды
-    bandDecay = 0.95f;           // Коэффициент затухания для каждой полосы
-    bandCeiling = 1000;          // Максимальное значение для каждой полосы
+    sensitivityReduction = DEFAULT_SENSITIVITY_REDUCTION;
+    lowFreqGain = DEFAULT_LOW_GAIN;
+    midFreqGain = DEFAULT_MID_GAIN;
+    highFreqGain = DEFAULT_HIGH_GAIN;
+    alpha = DEFAULT_ALPHA;
+    fMin = DEFAULT_FMIN;
+    fMax = DEFAULT_FMAX;
+    noiseThresholdRatio = DEFAULT_NOISE_THRESHOLD_RATIO;
+    bandDecay = DEFAULT_BAND_DECAY;
+    bandCeiling = DEFAULT_BAND_CEILING;
 
     memset(bands, 0, sizeof(bands));
     memset(smoothedBands, 0, sizeof(smoothedBands));
-    Serial.println("[AudioAnalyzer] Constructor called.");
 }
 
-// --- Деструктор ---
 AudioAnalyzer::~AudioAnalyzer() {
-    preferences.end();  // Закрываем пространство имен
-    Serial.println("[AudioAnalyzer] Preferences closed.");
+    preferences.end();
 }
 
-// --- Инициализация ---
 void AudioAnalyzer::begin() {
-    Serial.println("[AudioAnalyzer] Initializing...");
-    preferences.begin("audioanalyzer", true); // Открываем пространство имен
-    loadSettings(); // Загружаем настройки из NVS
-    preferences.end(); // Закрываем пространство имен
-    Serial.println("[AudioAnalyzer] Initialization complete.");
+    preferences.begin("audioanalyzer", true);
+    loadSettings();
+    preferences.end();
 }
 
-// --- Загрузка настроек ---
 void AudioAnalyzer::loadSettings() {
-    sensitivityReduction = preferences.getFloat("sensReduct", 5.0f);
-    lowFreqGain = preferences.getFloat("lowGain", 1.0f);
-    midFreqGain = preferences.getFloat("midGain", 1.0f);
-    highFreqGain = preferences.getFloat("highGain", 1.0f);
-    alpha = preferences.getFloat("alpha", 0.2f);
-    fMin = preferences.getFloat("fMin", 50.0f);
-    fMax = preferences.getFloat("fMax", 10000.0f);
-    noiseThresholdRatio = preferences.getFloat("nThresh", 0.25f);
-    bandDecay = preferences.getFloat("bDecay", 0.95f);
-    bandCeiling = preferences.getInt("bCeil", 1000);
-
-    // Логирование загруженных значений
-    Serial.printf("[AudioAnalyzer] Loaded sensitivityReduction: %.2f\n", sensitivityReduction);
-    Serial.printf("[AudioAnalyzer] Loaded lowFreqGain: %.2f\n", lowFreqGain);
-    Serial.printf("[AudioAnalyzer] Loaded midFreqGain: %.2f\n", midFreqGain);
-    Serial.printf("[AudioAnalyzer] Loaded highFreqGain: %.2f\n", highFreqGain);
-    Serial.printf("[AudioAnalyzer] Loaded alpha: %.2f\n", alpha);
-    Serial.printf("[AudioAnalyzer] Loaded fMin: %.1f\n", fMin);
-    Serial.printf("[AudioAnalyzer] Loaded fMax: %.1f\n", fMax);
-    Serial.printf("[AudioAnalyzer] Loaded noiseThresholdRatio: %.2f\n", noiseThresholdRatio);
-    Serial.printf("[AudioAnalyzer] Loaded bandDecay: %.3f\n", bandDecay);
-    Serial.printf("[AudioAnalyzer] Loaded bandCeiling: %d\n", bandCeiling);
+    sensitivityReduction = preferences.getFloat("sensReduct", DEFAULT_SENSITIVITY_REDUCTION);
+    lowFreqGain          = preferences.getFloat("lowGain", DEFAULT_LOW_GAIN);
+    midFreqGain          = preferences.getFloat("midGain", DEFAULT_MID_GAIN);
+    highFreqGain         = preferences.getFloat("highGain", DEFAULT_HIGH_GAIN);
+    alpha                = preferences.getFloat("alpha", DEFAULT_ALPHA);
+    fMin                 = preferences.getFloat("fMin", DEFAULT_FMIN);
+    fMax                 = preferences.getFloat("fMax", DEFAULT_FMAX);
+    noiseThresholdRatio  = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO);
+    bandDecay            = preferences.getFloat("bDecay", DEFAULT_BAND_DECAY);
+    bandCeiling          = preferences.getInt("bCeil", DEFAULT_BAND_CEILING);
 }
 
-// --- Сохранение настроек ---
+void AudioAnalyzer::resetSettings() {
+    preferences.begin("audioanalyzer", false);
+    preferences.clear();
+    preferences.end();
+    begin();
+}
+
 void AudioAnalyzer::saveSetting(const char* key, float value) {
-    preferences.begin("audioanalyzer", false); // Открываем пространство имен для записи
-    preferences.putFloat(key, value); // Сохраняем значение
-    preferences.end(); // Закрываем пространство имен
-    Serial.printf("[AudioAnalyzer] Saved %s: %.2f\n", key, value);
+    preferences.begin("audioanalyzer", false);
+    preferences.putFloat(key, value);
+    preferences.end();
 }
 
 void AudioAnalyzer::saveSetting(const char* key, int value) {
-    preferences.begin("audioanalyzer", false); // Открываем пространство имен для записи
-    preferences.putInt(key, value); // Сохраняем значение
-    preferences.end(); // Закрываем пространство имен
-    Serial.printf("[AudioAnalyzer] Saved %s: %d\n", key, value);
+    preferences.begin("audioanalyzer", false);
+    preferences.putInt(key, value);
+    preferences.end();
 }
 
-// --- Методы для установки коэффициентов с проверками ---
-
-// Устанавливает коэффициент чувствительности. Этот коэффициент влияет на то, насколько чувствительно устройство к изменениям звукового сигнала.
+// --- Сеттеры с проверкой ---
 void AudioAnalyzer::setSensitivityReduction(float value) {
     if (value >= 0.1f && value <= 100.0f) {
         sensitivityReduction = value;
-        saveSetting("sensReduct", sensitivityReduction);
-        Serial.printf("[AudioAnalyzer] Set sensitivityReduction: %.2f\n", sensitivityReduction);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid sensitivityReduction value.");
+        saveSetting("sensReduct", value);
     }
 }
 
-// Устанавливает усиление низких частот. Увеличение этого значения усиливает нижнюю часть спектра звука.
 void AudioAnalyzer::setLowFreqGain(float value) {
     if (value >= 0.0f && value <= 10.0f) {
         lowFreqGain = value;
-        saveSetting("lowGain", lowFreqGain);
-        Serial.printf("[AudioAnalyzer] Set lowFreqGain: %.2f\n", lowFreqGain);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid lowFreqGain value.");
+        saveSetting("lowGain", value);
     }
 }
 
-// Устанавливает усиление средних частот. Влияет на частоты, которые обычно находятся в диапазоне человеческой речи и музыки.
 void AudioAnalyzer::setMidFreqGain(float value) {
     if (value >= 0.0f && value <= 10.0f) {
         midFreqGain = value;
-        saveSetting("midGain", midFreqGain);
-        Serial.printf("[AudioAnalyzer] Set midFreqGain: %.2f\n", midFreqGain);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid midFreqGain value.");
+        saveSetting("midGain", value);
     }
 }
 
-// Устанавливает усиление высоких частот. Увеличение этого значения сделает звук ярче, с акцентом на высокие частоты.
 void AudioAnalyzer::setHighFreqGain(float value) {
     if (value >= 0.0f && value <= 10.0f) {
         highFreqGain = value;
-        saveSetting("highGain", highFreqGain);
-        Serial.printf("[AudioAnalyzer] Set highFreqGain: %.2f\n", highFreqGain);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid highFreqGain value.");
+        saveSetting("highGain", value);
     }
 }
 
-// Устанавливает коэффициент сглаживания для аудиосигнала. Это значение контролирует, как быстро система реагирует на изменения в сигнале.
 void AudioAnalyzer::setAlpha(float value) {
     if (value >= 0.01f && value <= 1.0f) {
         alpha = value;
-        saveSetting("alpha", alpha);
-        Serial.printf("[AudioAnalyzer] Set alpha: %.2f\n", alpha);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid alpha value.");
+        saveSetting("alpha", value);
     }
 }
 
-// Устанавливает минимальную частоту для анализа спектра. Частоты ниже этого значения будут игнорироваться.
 void AudioAnalyzer::setFMin(float value) {
     if (value >= 10.0f && value <= 1000.0f) {
         fMin = value;
-        saveSetting("fMin", fMin);
-        Serial.printf("[AudioAnalyzer] Set fMin: %.1f\n", fMin);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid fMin value.");
+        saveSetting("fMin", value);
     }
 }
 
-// Устанавливает максимальную частоту для анализа спектра. Частоты выше этого значения будут игнорироваться.
 void AudioAnalyzer::setFMax(float value) {
     if (value >= 1000.0f && value <= 30000.0f) {
         fMax = value;
-        saveSetting("fMax", fMax);
-        Serial.printf("[AudioAnalyzer] Set fMax: %.1f\n", fMax);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid fMax value.");
+        saveSetting("fMax", value);
     }
 }
 
-// Устанавливает порог шума. Звук с амплитудой ниже этого значения считается фоном и не учитывается в анализе.
 void AudioAnalyzer::setNoiseThresholdRatio(float value) {
     if (value >= 0.01f && value <= 1.0f) {
         noiseThresholdRatio = value;
-        saveSetting("nThresh", noiseThresholdRatio);
-        Serial.printf("[AudioAnalyzer] Set noiseThresholdRatio: %.2f\n", noiseThresholdRatio);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid noiseThresholdRatio value.");
+        saveSetting("nThresh", value);
     }
 }
 
-// Устанавливает коэффициент затухания для каждой полосы частот. Это значение контролирует, насколько быстро амплитуда сигнала в каждой полосе будет снижаться.
 void AudioAnalyzer::setBandDecay(float value) {
     if (value >= 0.90f && value <= 1.0f) {
         bandDecay = value;
-        saveSetting("bDecay", bandDecay);
-        Serial.printf("[AudioAnalyzer] Set bandDecay: %.3f\n", bandDecay);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid bandDecay value.");
+        saveSetting("bDecay", value);
     }
 }
 
-// Устанавливает потолок для амплитуды каждой полосы. Это значение ограничивает максимальную амплитуду в каждой полосе частот.
 void AudioAnalyzer::setBandCeiling(int value) {
     if (value >= 50 && value <= 1000) {
         bandCeiling = value;
-        saveSetting("bCeil", bandCeiling);
-        Serial.printf("[AudioAnalyzer] Set bandCeiling: %d\n", bandCeiling);
-    } else {
-        Serial.println("[AudioAnalyzer] Invalid bandCeiling value.");
+        saveSetting("bCeil", value);
     }
 }
 
-// --- Сглаживание полос ---
-void AudioAnalyzer::smoothBands() {
-    for (int i = 0; i < MATRIX_WIDTH; i++) {
-        smoothedBands[i] = (smoothedBands[i] * (1.0f - alpha)) + (alpha * bands[i]);
-    }
-}
-
-// --- Нормализация под высоту матрицы ---
-void AudioAnalyzer::normalizeBands(uint16_t* heights, int matrixHeight) {
-    for (int i = 0; i < MATRIX_WIDTH; i++) {
-        if (maxAmplitude > 0) {
-            heights[i] = map(smoothedBands[i], 0, maxAmplitude, 0, matrixHeight);
-        } else {
-            heights[i] = 0;
-        }
-        heights[i] = constrain(heights[i], 0, matrixHeight);
-    }
-}
-
-// --- Получение нормализованных значений ---
-void AudioAnalyzer::getNormalizedHeights(uint16_t* heights, int matrixHeight) {
-    smoothBands();
-    normalizeBands(heights, matrixHeight);
-}
-
-// --- Основной анализ звука ---
+// --- Обработка аудио ---
 void AudioAnalyzer::processAudio(int micPin) {
     double avg = 0;
     double lastSample = analogRead(micPin);
@@ -231,7 +160,6 @@ void AudioAnalyzer::processAudio(int micPin) {
     }
 
     avg /= SAMPLES;
-
     for (int i = 0; i < SAMPLES; i++) {
         vReal[i] -= avg;
     }
@@ -242,13 +170,54 @@ void AudioAnalyzer::processAudio(int micPin) {
     calculateBands();
 }
 
-// --- Вычисление полос частот ---
 void AudioAnalyzer::calculateBands() {
-    const double freqPerBin = (double)SAMPLING_FREQUENCY / (double)SAMPLES;
-    const double fMin = this->fMin;
-    const double fMax = this->fMax;
+    const double freqPerBin = (double)SAMPLING_FREQUENCY / SAMPLES;
+    const int minBin = (int)(fMin / freqPerBin);
+    const int maxBin = (int)(fMax / freqPerBin);
+    const int binRange = maxBin - minBin;
 
-    double totalRMS = 0.0;
-    int totalBins = 0;
+    maxAmplitude = 0;
 
-   
+    for (int i = 0; i < MATRIX_WIDTH; i++) {
+        int binStart = minBin + i * binRange / MATRIX_WIDTH;
+        int binEnd = minBin + (i + 1) * binRange / MATRIX_WIDTH;
+
+        float sum = 0;
+        for (int bin = binStart; bin < binEnd; bin++) {
+            float amplitude = FFT.read(bin);
+            if (amplitude > noiseThresholdRatio) {
+                sum += amplitude;
+            }
+        }
+
+        sum *= (i < MATRIX_WIDTH / 3) ? lowFreqGain :
+               (i < 2 * MATRIX_WIDTH / 3) ? midFreqGain :
+                                            highFreqGain;
+
+        bands[i] *= bandDecay;
+        if (sum > bands[i]) bands[i] = sum;
+        if (bands[i] > maxAmplitude) maxAmplitude = bands[i];
+    }
+
+    maxAmplitude = std::min(maxAmplitude, (float)bandCeiling);
+}
+
+void AudioAnalyzer::smoothBands() {
+    for (int i = 0; i < MATRIX_WIDTH; i++) {
+        smoothedBands[i] = (1.0f - alpha) * smoothedBands[i] + alpha * bands[i];
+    }
+}
+
+void AudioAnalyzer::normalizeBands(uint16_t* heights, int matrixHeight) {
+    for (int i = 0; i < MATRIX_WIDTH; i++) {
+        heights[i] = (maxAmplitude > 0)
+            ? map(smoothedBands[i], 0, maxAmplitude, 0, matrixHeight)
+            : 0;
+        heights[i] = constrain(heights[i], 0, matrixHeight);
+    }
+}
+
+void AudioAnalyzer::getNormalizedHeights(uint16_t* heights, int matrixHeight) {
+    smoothBands();
+    normalizeBands(heights, matrixHeight);
+}
