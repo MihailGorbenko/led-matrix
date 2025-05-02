@@ -192,9 +192,9 @@ void AudioAnalyzer::processAudio(int micPin) {
         vReal[i] -= avg;
     }
 
-    FFT.Windowing(FFT_WIN_TYP_BLACKMAN_HARRIS, FFT_FORWARD);
-    FFT.Compute(FFT_FORWARD);
-    FFT.ComplexToMagnitude();
+    FFT.windowing(FFT_WIN_TYP_BLACKMAN_HARRIS, FFT_FORWARD);
+    FFT.compute(FFT_FORWARD);
+    FFT.complexToMagnitude();
     calculateBands();
 }
 
@@ -228,7 +228,7 @@ void AudioAnalyzer::calculateBands() {
 
         double sum = 0;
         for (int i = fromBin; i < toBin; i++) {
-            float amplitude = FFT.read(i);
+            float amplitude = vReal[i]; // Используем vReal[i] вместо FFT.read(i)
             if (amplitude > threshold) {
                 sum += amplitude;
             }

@@ -28,7 +28,7 @@ void setup() {
     audioAnalyzer.setHighFreqGain(1.1); // Настройка усиления высоких частот
 
     // Запускаем анимацию
-    soundAnimator.setGreenAmplitudeAnimation();
+    soundAnimator.setColorAmplitudeAnimation();
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
