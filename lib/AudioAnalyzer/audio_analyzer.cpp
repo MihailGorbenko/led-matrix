@@ -11,7 +11,7 @@ const float DEFAULT_HIGH_GAIN = 1.0f;
 const float DEFAULT_ALPHA = 0.2f;
 const float DEFAULT_FMIN = 50.0f;
 const float DEFAULT_FMAX = 10000.0f;
-const float DEFAULT_NOISE_THRESHOLD_RATIO = 0.25f;
+const float DEFAULT_NOISE_THRESHOLD_RATIO = 0.1f;
 const float DEFAULT_BAND_DECAY = 0.95f;
 const int   DEFAULT_BAND_CEILING = 1000;
 
@@ -45,15 +45,15 @@ void AudioAnalyzer::begin() {
 
 void AudioAnalyzer::loadSettings() {
     sensitivityReduction = preferences.getFloat("sensReduct", DEFAULT_SENSITIVITY_REDUCTION);
-    lowFreqGain          = preferences.getFloat("lowGain", DEFAULT_LOW_GAIN);
-    midFreqGain          = preferences.getFloat("midGain", DEFAULT_MID_GAIN);
-    highFreqGain         = preferences.getFloat("highGain", DEFAULT_HIGH_GAIN);
-    alpha                = preferences.getFloat("alpha", DEFAULT_ALPHA);
-    fMin                 = preferences.getFloat("fMin", DEFAULT_FMIN);
-    fMax                 = preferences.getFloat("fMax", DEFAULT_FMAX);
-    noiseThresholdRatio  = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO);
-    bandDecay            = preferences.getFloat("bDecay", DEFAULT_BAND_DECAY);
-    bandCeiling          = preferences.getInt("bCeil", DEFAULT_BAND_CEILING);
+    lowFreqGain = preferences.getFloat("lowGain", DEFAULT_LOW_GAIN);
+    midFreqGain = preferences.getFloat("midGain", DEFAULT_MID_GAIN);
+    highFreqGain = preferences.getFloat("highGain", DEFAULT_HIGH_GAIN);
+    alpha = preferences.getFloat("alpha", DEFAULT_ALPHA);
+    fMin = preferences.getFloat("fMin", DEFAULT_FMIN);
+    fMax = preferences.getFloat("fMax", DEFAULT_FMAX);
+    noiseThresholdRatio = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO);
+    bandDecay = preferences.getFloat("bDecay", DEFAULT_BAND_DECAY);
+    bandCeiling = preferences.getInt("bCeil", DEFAULT_BAND_CEILING);
 }
 
 void AudioAnalyzer::resetSettings() {
@@ -172,31 +172,46 @@ void AudioAnalyzer::processAudio(int micPin) {
 
 void AudioAnalyzer::calculateBands() {
     const double freqPerBin = (double)SAMPLING_FREQUENCY / SAMPLES;
-    const int minBin = (int)(fMin / freqPerBin);
-    const int maxBin = (int)(fMax / freqPerBin);
-    const int binRange = maxBin - minBin;
+    const int totalBins = SAMPLES / 2;
+
+    // Вычисляем динамический шумовой порог по RMS
+    double rmsSum = 0;
+    for (int i = 0; i < totalBins; i++) {
+        rmsSum += vReal[i] * vReal[i];
+    }
+    float rms = sqrt(rmsSum / totalBins);
+    float threshold = rms * noiseThresholdRatio;
 
     maxAmplitude = 0;
 
-    for (int i = 0; i < MATRIX_WIDTH; i++) {
-        int binStart = minBin + i * binRange / MATRIX_WIDTH;
-        int binEnd = minBin + (i + 1) * binRange / MATRIX_WIDTH;
+    for (int b = 0; b < MATRIX_WIDTH; b++) {
+        double fromFreq = fMin * pow(fMax / fMin, (double)b / MATRIX_WIDTH);
+        double toFreq = fMin * pow(fMax / fMin, (double)(b + 1) / MATRIX_WIDTH);
 
-        float sum = 0;
-        for (int bin = binStart; bin < binEnd; bin++) {
-            float amplitude = FFT.read(bin);
-            if (amplitude > noiseThresholdRatio) {
+        int fromBin = (int)(fromFreq / freqPerBin);
+        int toBin = (int)(toFreq / freqPerBin);
+
+        fromBin = constrain(fromBin, 0, totalBins - 1);
+        toBin = constrain(toBin, fromBin + 1, totalBins);
+
+        double sum = 0;
+        for (int i = fromBin; i < toBin; i++) {
+            float amplitude = FFT.read(i);
+            if (amplitude > threshold) {
                 sum += amplitude;
             }
         }
 
-        sum *= (i < MATRIX_WIDTH / 3) ? lowFreqGain :
-               (i < 2 * MATRIX_WIDTH / 3) ? midFreqGain :
-                                            highFreqGain;
+        sum /= sensitivityReduction;
 
-        bands[i] *= bandDecay;
-        if (sum > bands[i]) bands[i] = sum;
-        if (bands[i] > maxAmplitude) maxAmplitude = bands[i];
+        if (b < MATRIX_WIDTH / 3) sum *= lowFreqGain;
+        else if (b < 2 * MATRIX_WIDTH / 3) sum *= midFreqGain;
+        else sum *= highFreqGain;
+
+        bands[b] *= bandDecay;
+        if (sum > bands[b]) bands[b] = sum;
+
+        if (bands[b] > maxAmplitude) maxAmplitude = bands[b];
     }
 
     maxAmplitude = std::min(maxAmplitude, (float)bandCeiling);
