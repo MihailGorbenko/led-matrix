@@ -3,34 +3,23 @@
 #include <cmath>
 #include <Arduino.h>
 
-// --- Константы по умолчанию ---
-const float DEFAULT_SENSITIVITY_REDUCTION = 5.0f;
-const float DEFAULT_LOW_GAIN = 1.0f;
-const float DEFAULT_MID_GAIN = 1.0f;
-const float DEFAULT_HIGH_GAIN = 1.0f;
-const float DEFAULT_ALPHA = 0.2f;
-const float DEFAULT_FMIN = 50.0f;
-const float DEFAULT_FMAX = 10000.0f;
-const float DEFAULT_NOISE_THRESHOLD_RATIO = 0.1f;
-const float DEFAULT_BAND_DECAY = 0.95f;
-const int   DEFAULT_BAND_CEILING = 1000;
-
 AudioAnalyzer::AudioAnalyzer()
-    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY)
-{
+    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY) { // Инициализация FFT
+    // Инициализация массивов частотных полос
+    memset(bands, 0, sizeof(bands));
+    memset(smoothedBands, 0, sizeof(smoothedBands));
+
+    // Инициализация настроек по умолчанию
     sensitivityReduction = DEFAULT_SENSITIVITY_REDUCTION;
-    lowFreqGain = DEFAULT_LOW_GAIN;
-    midFreqGain = DEFAULT_MID_GAIN;
-    highFreqGain = DEFAULT_HIGH_GAIN;
+    lowFreqGain = DEFAULT_LOW_FREQ_GAIN;
+    midFreqGain = DEFAULT_MID_FREQ_GAIN;
+    highFreqGain = DEFAULT_HIGH_FREQ_GAIN;
     alpha = DEFAULT_ALPHA;
     fMin = DEFAULT_FMIN;
     fMax = DEFAULT_FMAX;
     noiseThresholdRatio = DEFAULT_NOISE_THRESHOLD_RATIO;
     bandDecay = DEFAULT_BAND_DECAY;
     bandCeiling = DEFAULT_BAND_CEILING;
-
-    memset(bands, 0, sizeof(bands));
-    memset(smoothedBands, 0, sizeof(smoothedBands));
 }
 
 AudioAnalyzer::~AudioAnalyzer() {
@@ -38,44 +27,84 @@ AudioAnalyzer::~AudioAnalyzer() {
 }
 
 void AudioAnalyzer::begin() {
-    preferences.begin("audioanalyzer", true);
+    Serial.println("[AudioAnalyzer] Initializing...");
+    if (!preferences.begin("audioanalyzer", false)) {
+        Serial.println("[AudioAnalyzer] Failed to open preferences.");
+        return;
+    }
     loadSettings();
-    preferences.end();
+    Serial.println("[AudioAnalyzer] Initialization complete.");
 }
 
 void AudioAnalyzer::loadSettings() {
+    if (!preferences.begin("audioanalyzer", true)) {
+        Serial.println("[AudioAnalyzer] Failed to open preferences for reading.");
+        return;
+    }
+
     sensitivityReduction = preferences.getFloat("sensReduct", DEFAULT_SENSITIVITY_REDUCTION);
-    lowFreqGain = preferences.getFloat("lowGain", DEFAULT_LOW_GAIN);
-    midFreqGain = preferences.getFloat("midGain", DEFAULT_MID_GAIN);
-    highFreqGain = preferences.getFloat("highGain", DEFAULT_HIGH_GAIN);
+    Serial.printf("[AudioAnalyzer] Loaded sensitivityReduction: %.2f\n", sensitivityReduction);
+
+    lowFreqGain = preferences.getFloat("lowGain", DEFAULT_LOW_FREQ_GAIN);
+    Serial.printf("[AudioAnalyzer] Loaded lowFreqGain: %.2f\n", lowFreqGain);
+
+    midFreqGain = preferences.getFloat("midGain", DEFAULT_MID_FREQ_GAIN);
+    Serial.printf("[AudioAnalyzer] Loaded midFreqGain: %.2f\n", midFreqGain);
+
+    highFreqGain = preferences.getFloat("highGain", DEFAULT_HIGH_FREQ_GAIN);
+    Serial.printf("[AudioAnalyzer] Loaded highFreqGain: %.2f\n", highFreqGain);
+
     alpha = preferences.getFloat("alpha", DEFAULT_ALPHA);
+    Serial.printf("[AudioAnalyzer] Loaded alpha: %.2f\n", alpha);
+
     fMin = preferences.getFloat("fMin", DEFAULT_FMIN);
+    Serial.printf("[AudioAnalyzer] Loaded fMin: %.2f\n", fMin);
+
     fMax = preferences.getFloat("fMax", DEFAULT_FMAX);
+    Serial.printf("[AudioAnalyzer] Loaded fMax: %.2f\n", fMax);
+
     noiseThresholdRatio = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO);
+    Serial.printf("[AudioAnalyzer] Loaded noiseThresholdRatio: %.2f\n", noiseThresholdRatio);
+
     bandDecay = preferences.getFloat("bDecay", DEFAULT_BAND_DECAY);
+    Serial.printf("[AudioAnalyzer] Loaded bandDecay: %.2f\n", bandDecay);
+
     bandCeiling = preferences.getInt("bCeil", DEFAULT_BAND_CEILING);
+    Serial.printf("[AudioAnalyzer] Loaded bandCeiling: %d\n", bandCeiling);
+
+    preferences.end();
 }
 
 void AudioAnalyzer::resetSettings() {
-    preferences.begin("audioanalyzer", false);
+    if (!preferences.begin("audioanalyzer", false)) {
+        Serial.println("[AudioAnalyzer] Failed to open preferences for resetting.");
+        return;
+    }
     preferences.clear();
     preferences.end();
     begin();
 }
 
 void AudioAnalyzer::saveSetting(const char* key, float value) {
-    preferences.begin("audioanalyzer", false);
+    if (!preferences.begin("audioanalyzer", false)) {
+        Serial.println("[AudioAnalyzer] Failed to open preferences for saving.");
+        return;
+    }
     preferences.putFloat(key, value);
+    Serial.printf("[AudioAnalyzer] Saved %s: %.2f\n", key, value);
     preferences.end();
 }
 
 void AudioAnalyzer::saveSetting(const char* key, int value) {
-    preferences.begin("audioanalyzer", false);
+    if (!preferences.begin("audioanalyzer", false)) {
+        Serial.println("[AudioAnalyzer] Failed to open preferences for saving.");
+        return;
+    }
     preferences.putInt(key, value);
+    Serial.printf("[AudioAnalyzer] Saved %s: %d\n", key, value);
     preferences.end();
 }
 
-// --- Сеттеры с проверкой ---
 void AudioAnalyzer::setSensitivityReduction(float value) {
     if (value >= 0.1f && value <= 100.0f) {
         sensitivityReduction = value;
@@ -146,7 +175,6 @@ void AudioAnalyzer::setBandCeiling(int value) {
     }
 }
 
-// --- Обработка аудио ---
 void AudioAnalyzer::processAudio(int micPin) {
     double avg = 0;
     double lastSample = analogRead(micPin);
@@ -164,17 +192,21 @@ void AudioAnalyzer::processAudio(int micPin) {
         vReal[i] -= avg;
     }
 
-    FFT.windowing(FFT_WIN_TYP_BLACKMAN_HARRIS, FFT_FORWARD);
-    FFT.compute(FFT_FORWARD);
-    FFT.complexToMagnitude();
+    FFT.Windowing(FFT_WIN_TYP_BLACKMAN_HARRIS, FFT_FORWARD);
+    FFT.Compute(FFT_FORWARD);
+    FFT.ComplexToMagnitude();
     calculateBands();
 }
 
 void AudioAnalyzer::calculateBands() {
+    if (fMin <= 0 || fMax <= 0) {
+        Serial.println("[AudioAnalyzer] Invalid frequency range.");
+        return;
+    }
+
     const double freqPerBin = (double)SAMPLING_FREQUENCY / SAMPLES;
     const int totalBins = SAMPLES / 2;
 
-    // Вычисляем динамический шумовой порог по RMS
     double rmsSum = 0;
     for (int i = 0; i < totalBins; i++) {
         rmsSum += vReal[i] * vReal[i];
