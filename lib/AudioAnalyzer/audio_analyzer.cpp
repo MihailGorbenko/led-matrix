@@ -1,9 +1,11 @@
 #include "audio_analyzer.hpp"
 #include <nvs_flash.h>
+#include <cmath>
+#include <Arduino.h>
 
 // Конструктор
 AudioAnalyzer::AudioAnalyzer()
-    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY), // Инициализация FFT
+    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY),
       maxAmplitude(1), sensitivityReduction(1.0),
       lowFreqGain(1.0), midFreqGain(1.0), highFreqGain(1.0),
       dynamicNoiseThreshold(0.0) {
@@ -14,20 +16,20 @@ AudioAnalyzer::AudioAnalyzer()
 
 // Деструктор
 AudioAnalyzer::~AudioAnalyzer() {
-    preferences.end(); // Закрываем пространство имен
+    preferences.end();
     Serial.println("[AudioAnalyzer] Preferences closed.");
 }
 
 // Инициализация
 void AudioAnalyzer::begin() {
     Serial.println("[AudioAnalyzer] Initializing...");
-    preferences.begin("audioanalyzer", true); // Открываем пространство имен
-    loadSettings(); // Загрузка сохранённых настроек
-    preferences.end(); // Закрываем пространство имен
+    preferences.begin("audioanalyzer", true);
+    loadSettings();
+    preferences.end();
     Serial.println("[AudioAnalyzer] Initialization complete.");
 }
 
-// Загрузка настроек из памяти
+// Загрузка настроек
 void AudioAnalyzer::loadSettings() {
     sensitivityReduction = preferences.getFloat("sensReduct", 5.0);
     Serial.printf("[AudioAnalyzer] Loaded sensitivityReduction: %.2f\n", sensitivityReduction);
@@ -42,36 +44,33 @@ void AudioAnalyzer::loadSettings() {
     Serial.printf("[AudioAnalyzer] Loaded highFreqGain: %.2f\n", highFreqGain);
 }
 
-// Сохранение настройки в память
+// Сохранение настройки
 void AudioAnalyzer::saveSetting(const char* key, float value) {
-    preferences.begin("audioanalyzer",false); // Открываем пространство имен
+    preferences.begin("audioanalyzer", false);
     preferences.putFloat(key, value);
-    preferences.end(); // Закрываем пространство имен
+    preferences.end();
     Serial.printf("[AudioAnalyzer] Saved %s: %.2f\n", key, value);
 }
 
-// Установка общей чувствительности
+// Настройка чувствительности
 void AudioAnalyzer::setSensitivityReduction(double reduction) {
     sensitivityReduction = reduction > 0 ? reduction : 1.0;
     saveSetting("sensReduct", sensitivityReduction);
     Serial.printf("[AudioAnalyzer] Set sensitivityReduction: %.2f\n", sensitivityReduction);
 }
 
-// Установка усиления для низких частот
 void AudioAnalyzer::setLowFreqGain(double gain) {
     lowFreqGain = gain;
     saveSetting("lowGain", lowFreqGain);
     Serial.printf("[AudioAnalyzer] Set lowFreqGain: %.2f\n", lowFreqGain);
 }
 
-// Установка усиления для средних частот
 void AudioAnalyzer::setMidFreqGain(double gain) {
     midFreqGain = gain;
     saveSetting("midGain", midFreqGain);
     Serial.printf("[AudioAnalyzer] Set midFreqGain: %.2f\n", midFreqGain);
 }
 
-// Установка усиления для высоких частот
 void AudioAnalyzer::setHighFreqGain(double gain) {
     highFreqGain = gain;
     saveSetting("highGain", highFreqGain);
@@ -83,10 +82,9 @@ void AudioAnalyzer::smoothBands() {
     for (int i = 0; i < MATRIX_WIDTH; i++) {
         smoothedBands[i] = (smoothedBands[i] * 3 + bands[i]) / 4;
     }
-
 }
 
-// Нормализация полос для высоты матрицы
+// Нормализация под высоту матрицы
 void AudioAnalyzer::normalizeBands(uint16_t* heights, int matrixHeight) {
     for (int i = 0; i < MATRIX_WIDTH; i++) {
         if (maxAmplitude > 0) {
@@ -96,22 +94,24 @@ void AudioAnalyzer::normalizeBands(uint16_t* heights, int matrixHeight) {
         }
         heights[i] = constrain(heights[i], 0, matrixHeight);
     }
-
 }
 
-// Получение нормализованных высот
+// Получение нормализованных значений
 void AudioAnalyzer::getNormalizedHeights(uint16_t* heights, int matrixHeight) {
     smoothBands();
     normalizeBands(heights, matrixHeight);
-   
 }
 
-// Обработка аудиосигнала
+// Основной анализ звука
 void AudioAnalyzer::processAudio(int micPin) {
     double avg = 0;
+    double alpha = 0.2; // коэффициент сглаживания
+    double lastSample = analogRead(micPin);
 
     for (int i = 0; i < SAMPLES; i++) {
-        vReal[i] = analogRead(micPin);
+        double raw = analogRead(micPin);
+        vReal[i] = alpha * raw + (1.0 - alpha) * lastSample;
+        lastSample = vReal[i];
         avg += vReal[i];
         vImag[i] = 0;
     }
@@ -126,10 +126,9 @@ void AudioAnalyzer::processAudio(int micPin) {
     FFT.compute(FFT_FORWARD);
     FFT.complexToMagnitude();
     calculateBands();
-
 }
 
-// Вычисление амплитуд в полосах
+// Вычисление полос частот
 void AudioAnalyzer::calculateBands() {
     const double freqPerBin = (double)SAMPLING_FREQUENCY / (double)SAMPLES;
     const double fMin = 50.0;
@@ -144,7 +143,7 @@ void AudioAnalyzer::calculateBands() {
     }
 
     totalRMS = sqrt(totalRMS / totalBins);
-    dynamicNoiseThreshold = totalRMS * 0.1;
+    dynamicNoiseThreshold = totalRMS * 0.25; // Повышен порог шума
 
     for (int b = 0; b < MATRIX_WIDTH; b++) {
         double fromFreq = fMin * pow(fMax / fMin, (double)b / MATRIX_WIDTH);
@@ -181,7 +180,4 @@ void AudioAnalyzer::calculateBands() {
             maxAmplitude = max(maxAmplitude * 0.995, 1.0);
         }
     }
-
-
 }
-
