@@ -26,9 +26,10 @@ void setup() {
     audioAnalyzer.setLowFreqGain(0.8); // Настройка усиления низких частот      
     audioAnalyzer.setMidFreqGain(1.1); // Настройка усиления средних частот
     audioAnalyzer.setHighFreqGain(1.1); // Настройка усиления высоких частот
+    audioAnalyzer.setNoiseThresholdRatio(0.25); // Настройка коэффициента порога шума
 
     // Запускаем анимацию
-    soundAnimator.setGreenAmplitudeAnimation();
+    soundAnimator.setColorAmplitudeAnimation();
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
@@ -36,13 +37,9 @@ void setup() {
 
 void loop() {
     // Основной цикл остаётся пустым, так как анимация выполняется в задаче
-    delay(1000); // Добавляем небольшую задержку для снижения нагрузки
+    delay(100); // Добавляем небольшую задержку для снижения нагрузки
    
 
 }
 
-// TODO:
-//1. сделать вывод в serial из разных задач(нужно разобраться с последовательностью инициализации)
-//2. сделать совмесное использование nvs flash между задачами
-//
-//
+

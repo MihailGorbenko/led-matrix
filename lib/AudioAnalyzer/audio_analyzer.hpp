@@ -6,6 +6,16 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
+// Константы для настройки AudioAnalyzer
+constexpr double DEFAULT_FMIN = 50.0;                // Минимальная частота
+constexpr double DEFAULT_FMAX = 20000.0;            // Максимальная частота
+constexpr double DEFAULT_NOISE_THRESHOLD_RATIO = 0.25; // Коэффициент порога шума
+constexpr double DEFAULT_SENSITIVITY_REDUCTION = 5.0; // Коэффициент чувствительности
+constexpr double DEFAULT_LOW_FREQ_GAIN = 0.8;       // Усиление низких частот
+constexpr double DEFAULT_MID_FREQ_GAIN = 1.1;       // Усиление средних частот
+constexpr double DEFAULT_HIGH_FREQ_GAIN = 1.1;      // Усиление высоких частот
+constexpr double DEFAULT_MAX_AMPLITUDE_DECAY = 0.995; // Затухание максимальной амплитуды
+constexpr uint16_t DEFAULT_RMS_CONSTRAINT = 400;    // Ограничение RMS
 
 class AudioAnalyzer {
 private:
@@ -26,6 +36,7 @@ private:
     double midFreqGain;
     double highFreqGain;
     double dynamicNoiseThreshold;
+    double noiseThresholdRatio; // Коэффициент порога шума
 
 public:
     AudioAnalyzer();
@@ -35,6 +46,7 @@ public:
     void setLowFreqGain(double gain);
     void setMidFreqGain(double gain);
     void setHighFreqGain(double gain);
+    void setNoiseThresholdRatio(double ratio); // Новый сеттер
     void getNormalizedHeights(uint16_t* heights, int matrixHeight);
     void resetSettings();
     void begin();

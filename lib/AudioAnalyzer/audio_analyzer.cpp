@@ -4,9 +4,10 @@
 // Конструктор
 AudioAnalyzer::AudioAnalyzer()
     : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY), // Инициализация FFT
-      maxAmplitude(1), sensitivityReduction(1.0),
-      lowFreqGain(1.0), midFreqGain(1.0), highFreqGain(1.0),
-      dynamicNoiseThreshold(0.0) {
+      maxAmplitude(1), sensitivityReduction(DEFAULT_SENSITIVITY_REDUCTION),
+      lowFreqGain(DEFAULT_LOW_FREQ_GAIN), midFreqGain(DEFAULT_MID_FREQ_GAIN),
+      highFreqGain(DEFAULT_HIGH_FREQ_GAIN), dynamicNoiseThreshold(0.0),
+      noiseThresholdRatio(DEFAULT_NOISE_THRESHOLD_RATIO) { // Инициализация noiseThresholdRatio
     memset(bands, 0, sizeof(bands));
     memset(smoothedBands, 0, sizeof(smoothedBands));
     Serial.println("[AudioAnalyzer] Constructor called.");
@@ -29,22 +30,25 @@ void AudioAnalyzer::begin() {
 
 // Загрузка настроек из памяти
 void AudioAnalyzer::loadSettings() {
-    sensitivityReduction = preferences.getFloat("sensReduct", 5.0);
+    sensitivityReduction = preferences.getFloat("sensReduct", DEFAULT_SENSITIVITY_REDUCTION);
     Serial.printf("[AudioAnalyzer] Loaded sensitivityReduction: %.2f\n", sensitivityReduction);
 
-    lowFreqGain = preferences.getFloat("lowGain", 1.0);
+    lowFreqGain = preferences.getFloat("lowGain", DEFAULT_LOW_FREQ_GAIN);
     Serial.printf("[AudioAnalyzer] Loaded lowFreqGain: %.2f\n", lowFreqGain);
 
-    midFreqGain = preferences.getFloat("midGain", 1.0);
+    midFreqGain = preferences.getFloat("midGain", DEFAULT_MID_FREQ_GAIN);
     Serial.printf("[AudioAnalyzer] Loaded midFreqGain: %.2f\n", midFreqGain);
 
-    highFreqGain = preferences.getFloat("highGain", 1.0);
+    highFreqGain = preferences.getFloat("highGain", DEFAULT_HIGH_FREQ_GAIN);
     Serial.printf("[AudioAnalyzer] Loaded highFreqGain: %.2f\n", highFreqGain);
+
+    noiseThresholdRatio = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO); // Загрузка noiseThresholdRatio
+    Serial.printf("[AudioAnalyzer] Loaded noiseThresholdRatio: %.2f\n", noiseThresholdRatio);
 }
 
 // Сохранение настройки в память
 void AudioAnalyzer::saveSetting(const char* key, float value) {
-    preferences.begin("audioanalyzer",false); // Открываем пространство имен
+    preferences.begin("audioanalyzer", false); // Открываем пространство имен
     preferences.putFloat(key, value);
     preferences.end(); // Закрываем пространство имен
     Serial.printf("[AudioAnalyzer] Saved %s: %.2f\n", key, value);
@@ -52,13 +56,21 @@ void AudioAnalyzer::saveSetting(const char* key, float value) {
 
 // Установка общей чувствительности
 void AudioAnalyzer::setSensitivityReduction(double reduction) {
-    sensitivityReduction = reduction > 0 ? reduction : 1.0;
+    if (reduction <= 0) {
+        Serial.println("[AudioAnalyzer] Invalid sensitivityReduction value. Must be > 0.");
+        return;
+    }
+    sensitivityReduction = reduction;
     saveSetting("sensReduct", sensitivityReduction);
     Serial.printf("[AudioAnalyzer] Set sensitivityReduction: %.2f\n", sensitivityReduction);
 }
 
 // Установка усиления для низких частот
 void AudioAnalyzer::setLowFreqGain(double gain) {
+    if (gain < 0) {
+        Serial.println("[AudioAnalyzer] Invalid lowFreqGain value. Must be >= 0.");
+        return;
+    }
     lowFreqGain = gain;
     saveSetting("lowGain", lowFreqGain);
     Serial.printf("[AudioAnalyzer] Set lowFreqGain: %.2f\n", lowFreqGain);
@@ -66,6 +78,10 @@ void AudioAnalyzer::setLowFreqGain(double gain) {
 
 // Установка усиления для средних частот
 void AudioAnalyzer::setMidFreqGain(double gain) {
+    if (gain < 0) {
+        Serial.println("[AudioAnalyzer] Invalid midFreqGain value. Must be >= 0.");
+        return;
+    }
     midFreqGain = gain;
     saveSetting("midGain", midFreqGain);
     Serial.printf("[AudioAnalyzer] Set midFreqGain: %.2f\n", midFreqGain);
@@ -73,9 +89,24 @@ void AudioAnalyzer::setMidFreqGain(double gain) {
 
 // Установка усиления для высоких частот
 void AudioAnalyzer::setHighFreqGain(double gain) {
+    if (gain < 0) {
+        Serial.println("[AudioAnalyzer] Invalid highFreqGain value. Must be >= 0.");
+        return;
+    }
     highFreqGain = gain;
     saveSetting("highGain", highFreqGain);
     Serial.printf("[AudioAnalyzer] Set highFreqGain: %.2f\n", highFreqGain);
+}
+
+// Установка коэффициента порога шума
+void AudioAnalyzer::setNoiseThresholdRatio(double ratio) {
+    if (ratio <= 0 || ratio > 1) {
+        Serial.println("[AudioAnalyzer] Invalid noiseThresholdRatio value. Must be between 0 and 1.");
+        return;
+    }
+    noiseThresholdRatio = ratio;
+    saveSetting("nThresh", noiseThresholdRatio);
+    Serial.printf("[AudioAnalyzer] Set noiseThresholdRatio: %.2f\n", noiseThresholdRatio);
 }
 
 // Сглаживание полос
@@ -83,7 +114,6 @@ void AudioAnalyzer::smoothBands() {
     for (int i = 0; i < MATRIX_WIDTH; i++) {
         smoothedBands[i] = (smoothedBands[i] * 3 + bands[i]) / 4;
     }
-
 }
 
 // Нормализация полос для высоты матрицы
@@ -96,14 +126,12 @@ void AudioAnalyzer::normalizeBands(uint16_t* heights, int matrixHeight) {
         }
         heights[i] = constrain(heights[i], 0, matrixHeight);
     }
-
 }
 
 // Получение нормализованных высот
 void AudioAnalyzer::getNormalizedHeights(uint16_t* heights, int matrixHeight) {
     smoothBands();
     normalizeBands(heights, matrixHeight);
-   
 }
 
 // Обработка аудиосигнала
@@ -126,14 +154,11 @@ void AudioAnalyzer::processAudio(int micPin) {
     FFT.compute(FFT_FORWARD);
     FFT.complexToMagnitude();
     calculateBands();
-
 }
 
 // Вычисление амплитуд в полосах
 void AudioAnalyzer::calculateBands() {
     const double freqPerBin = (double)SAMPLING_FREQUENCY / (double)SAMPLES;
-    const double fMin = 50.0;
-    const double fMax = 20000.0;
 
     double totalRMS = 0.0;
     int totalBins = 0;
@@ -144,11 +169,11 @@ void AudioAnalyzer::calculateBands() {
     }
 
     totalRMS = sqrt(totalRMS / totalBins);
-    dynamicNoiseThreshold = totalRMS * 0.1;
+    dynamicNoiseThreshold = totalRMS * noiseThresholdRatio; // Использование noiseThresholdRatio
 
     for (int b = 0; b < MATRIX_WIDTH; b++) {
-        double fromFreq = fMin * pow(fMax / fMin, (double)b / MATRIX_WIDTH);
-        double toFreq = fMin * pow(fMax / fMin, (double)(b + 1) / MATRIX_WIDTH);
+        double fromFreq = DEFAULT_FMIN * pow(DEFAULT_FMAX / DEFAULT_FMIN, (double)b / MATRIX_WIDTH);
+        double toFreq = DEFAULT_FMIN * pow(DEFAULT_FMAX / DEFAULT_FMIN, (double)(b + 1) / MATRIX_WIDTH);
 
         int fromBin = (int)(fromFreq / freqPerBin);
         int toBin = (int)(toFreq / freqPerBin);
@@ -172,16 +197,14 @@ void AudioAnalyzer::calculateBands() {
         else if (b < 2 * MATRIX_WIDTH / 3) rms *= midFreqGain;
         else rms *= highFreqGain;
 
-        rms = constrain(rms, 0, 400);
+        rms = constrain(rms, 0, DEFAULT_RMS_CONSTRAINT);
         bands[b] = (uint16_t)rms;
 
         if (bands[b] > maxAmplitude) {
             maxAmplitude = bands[b];
         } else {
-            maxAmplitude = max(maxAmplitude * 0.995, 1.0);
+            maxAmplitude = max(maxAmplitude * DEFAULT_MAX_AMPLITUDE_DECAY, 1.0);
         }
     }
-
-
 }
 
