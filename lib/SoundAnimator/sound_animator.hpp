@@ -1,13 +1,12 @@
 #ifndef SOUND_ANIMATOR_HPP
 #define SOUND_ANIMATOR_HPP
 
-#include <functional>
 #include "led_matrix.hpp"
 #include "audio_analyzer.hpp"
 #include "matrix_task.hpp"
 
-
 enum AnimationType {
+    NONE,
     COLOR_AMPLITUDE,
     GREEN_AMPLITUDE
 };
@@ -16,31 +15,33 @@ class SoundAnimator : public MatrixTask {
 public:
     SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer);
 
-    // Методы управления анимацией
+    // Методы установки анимаций
     void setColorAmplitudeAnimation();
     void setGreenAmplitudeAnimation();
+    
+    // Обновление текущей анимации
     void update();
 
     // Управление задачей
     void startTask() override;
     void stopTask() override;
 
-    // Получение доступа к анализатору (по запросу извне)
-    AudioAnalyzer& getAnalyzer();
+    // Доступ к анализатору
+    AudioAnalyzer& getAnalyzer() { return audioAnalyzer; }
 
 private:
     LedMatrix& ledMatrix;
-    AudioAnalyzer& audioAnalyzer;  // исправлено: теперь это ссылка
+    AudioAnalyzer& audioAnalyzer;
 
     unsigned long lastUpdateTime = 0;
     bool isAnimating = false;
-    AnimationType currentAnimation = COLOR_AMPLITUDE;
-    std::function<CRGB(uint8_t)> currentColorFunc;
+    AnimationType currentAnimation = NONE;
 
-    // Общий метод визуализации
-    void renderAmplitude(std::function<CRGB(uint8_t)> colorFunc);
+    // Методы отрисовки конкретных анимаций
+    void renderColorAmplitude();
+    void renderGreenAmplitude();
 
-    // Задача анимации
+    // FreeRTOS задача
     static void animationTask(void* param);
     TaskHandle_t animationTaskHandle = nullptr;
 };
