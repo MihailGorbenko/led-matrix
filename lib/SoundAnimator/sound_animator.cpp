@@ -7,17 +7,13 @@ SoundAnimator::SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer)
       audioAnalyzer(analyzer),
       lastUpdateTime(0),
       isAnimating(false),
-      currentAnimation(COLOR_AMPLITUDE),
-      currentColorFunc(nullptr),
+      currentAnimation(NONE),
       animationTaskHandle(nullptr)
 {
-
 }
 
-// Общий метод для визуализации амплитуды
-void SoundAnimator::renderAmplitude(std::function<CRGB(uint8_t)> colorFunc) {
-    if (!colorFunc) return;  // Защита от null-функции
-
+// Визуализация: цветная амплитуда (по высоте)
+void SoundAnimator::renderColorAmplitude() {
     audioAnalyzer.processAudio(MIC_PIN);
 
     uint16_t heights[MATRIX_WIDTH];
@@ -28,53 +24,76 @@ void SoundAnimator::renderAmplitude(std::function<CRGB(uint8_t)> colorFunc) {
 
     for (int x = 0; x < MATRIX_WIDTH; x++) {
         for (int y = max(0, MATRIX_HEIGHT - heights[x]); y < MATRIX_HEIGHT; y++) {
-            leds[ledMatrix.XY(x, y)] = colorFunc(heights[x]);
+            uint8_t hue = map(heights[x], 0, MATRIX_HEIGHT, 0, 255);
+            leds[ledMatrix.XY(x, y)] = CHSV(hue, 255, 255);
         }
     }
 
     ledMatrix.update();
 }
 
-// Установка цветной визуализации
+// Визуализация: зелёная амплитуда
+void SoundAnimator::renderGreenAmplitude() {
+    audioAnalyzer.processAudio(MIC_PIN);
+
+    uint16_t heights[MATRIX_WIDTH];
+    audioAnalyzer.getNormalizedHeights(heights, MATRIX_WIDTH);
+
+    CRGB* leds = ledMatrix.getLeds();
+    ledMatrix.clear();
+
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+        for (int y = max(0, MATRIX_HEIGHT - heights[x]); y < MATRIX_HEIGHT; y++) {
+            leds[ledMatrix.XY(x, y)] = CRGB::Green;
+        }
+    }
+
+    ledMatrix.update();
+}
+
+// Установка цветной анимации
 void SoundAnimator::setColorAmplitudeAnimation() {
     isAnimating = true;
     currentAnimation = COLOR_AMPLITUDE;
-    currentColorFunc = [](uint8_t height) {
-        uint8_t hue = map(height, 0, MATRIX_HEIGHT, 0, 255);
-        return CHSV(hue, 255, 255);
-    };
 }
 
-// Установка зелёной визуализации
+// Установка зелёной анимации
 void SoundAnimator::setGreenAmplitudeAnimation() {
     isAnimating = true;
     currentAnimation = GREEN_AMPLITUDE;
-    currentColorFunc = [](uint8_t) {
-        return CRGB::Green;
-    };
 }
 
-// Обновление визуализации (FPS контролируется задачей)
+// Обновление визуализации
 void SoundAnimator::update() {
-    if (!isAnimating || !currentColorFunc) return;
+    if (!isAnimating) return;
 
-    renderAmplitude(currentColorFunc);
+    switch (currentAnimation) {
+        case COLOR_AMPLITUDE:
+            renderColorAmplitude();
+            break;
+        case GREEN_AMPLITUDE:
+            renderGreenAmplitude();
+            break;
+        default:
+            break;
+    }
 }
 
-// Задача обновления анимации
+// Задача обновления
 void SoundAnimator::animationTask(void* param) {
     SoundAnimator* animator = static_cast<SoundAnimator*>(param);
-
-    while (true) {
+    while (animator->isAnimating) {
         animator->update();
-        vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL)); // ~30 FPS
+        vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL));
     }
+    vTaskDelete(nullptr); // Завершаем задачу корректно
 }
 
 // Запуск задачи
 void SoundAnimator::startTask() {
     if (animationTaskHandle == nullptr) {
         Serial.println("[SoundAnimator] Starting animation task...");
+        isAnimating = true;
         xTaskCreatePinnedToCore(
             animationTask,
             "AnimationTask",
@@ -82,9 +101,8 @@ void SoundAnimator::startTask() {
             this,
             1,
             &animationTaskHandle,
-            1 // Ядро 1 — можно настроить
+            1
         );
-        isAnimating = true;
         Serial.println("[SoundAnimator] Animation task started.");
     } else {
         Serial.println("[SoundAnimator] Animation task is already running.");
@@ -95,12 +113,11 @@ void SoundAnimator::startTask() {
 void SoundAnimator::stopTask() {
     if (animationTaskHandle != nullptr) {
         Serial.println("[SoundAnimator] Stopping animation task...");
-        vTaskDelete(animationTaskHandle);
+        isAnimating = false; // Позволим задаче выйти корректно
         animationTaskHandle = nullptr;
-        isAnimating = false;
 
-        ledMatrix.clear();  // Очищаем матрицу
-        ledMatrix.update(); // Применяем изменения
+        ledMatrix.clear();
+        ledMatrix.update();
 
         Serial.println("[SoundAnimator] Animation task stopped.");
     } else {
