@@ -7,42 +7,37 @@
 
 // Создаём объекты
 LedMatrix ledMatrix;
-AudioAnalyzer audioAnalyzer; // Создаём объект AudioAnalyzer
-SoundAnimator soundAnimator(ledMatrix,audioAnalyzer); // Получаем ссылку на AudioAnalyzer
+SoundAnimator soundAnimator(ledMatrix); 
 MatrixTask* currentMatrixTask = &soundAnimator; // Указатель на задачу матрицы
 
 
 void setup() {
     Serial.begin(115200);
+
+    // Инициализация NVS
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+
     pinMode(MIC_PIN, INPUT);
     analogReadResolution(12); 
     analogSetAttenuation(ADC_11db);
 
     ledMatrix.begin(); // Инициализация матрицы
     ledMatrix.setBrightness(BRIGHTNESS);
-
-    audioAnalyzer.begin(); // Инициализация анализатора звука
-    audioAnalyzer.setSensitivityReduction(5.0); // Настройка чувствительности
-    audioAnalyzer.setLowFreqGain(0.8); // Настройка усиления низких частот      
-    audioAnalyzer.setMidFreqGain(1.1); // Настройка усиления средних частот
-    audioAnalyzer.setHighFreqGain(1.1); // Настройка усиления высоких частот
-
+   
     // Запускаем анимацию
-    soundAnimator.setColorAmplitudeAnimation();
+    soundAnimator.initializeAudioAnalyzer(); // Инициализация AudioAnalyzer
+    soundAnimator.setGreenAmplitudeAnimation();
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
 }
 
 void loop() {
-    // Основной цикл остаётся пустым, так как анимация выполняется в задаче
-    delay(1000); // Добавляем небольшую задержку для снижения нагрузки
-   
+
+    delay(1000); // Задержка в 1 секунду для предотвращения перегрузки Serial
 
 }
-
-// TODO:
-//1. сделать вывод в serial из разных задач(нужно разобраться с последовательностью инициализации)
-//2. сделать совмесное использование nvs flash между задачами
-//
-//

@@ -2,19 +2,22 @@
 #include "config.hpp"
 
 // Конструктор
-SoundAnimator::SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer)
+SoundAnimator::SoundAnimator(LedMatrix& matrix)
     : ledMatrix(matrix),
-      audioAnalyzer(analyzer),
+      audioAnalyzer(), // Инициализация AudioAnalyzer
       lastUpdateTime(0),
       isAnimating(false),
-      currentAnimation(NONE),
-      animationTaskHandle(nullptr)
-{
+      currentRenderMethod(nullptr),
+      animationTaskHandle(nullptr) {}
+
+// Метод для получения ссылки на AudioAnalyzer
+AudioAnalyzer& SoundAnimator::getAudioAnalyzer() {
+    return audioAnalyzer;
 }
 
 // Визуализация: цветная амплитуда (по высоте)
 void SoundAnimator::renderColorAmplitude() {
-    audioAnalyzer.processAudio(MIC_PIN);
+    audioAnalyzer.processAudio();
 
     uint16_t heights[MATRIX_WIDTH];
     audioAnalyzer.getNormalizedHeights(heights, MATRIX_WIDTH);
@@ -34,7 +37,7 @@ void SoundAnimator::renderColorAmplitude() {
 
 // Визуализация: зелёная амплитуда
 void SoundAnimator::renderGreenAmplitude() {
-    audioAnalyzer.processAudio(MIC_PIN);
+    audioAnalyzer.processAudio();
 
     uint16_t heights[MATRIX_WIDTH];
     audioAnalyzer.getNormalizedHeights(heights, MATRIX_WIDTH);
@@ -54,29 +57,21 @@ void SoundAnimator::renderGreenAmplitude() {
 // Установка цветной анимации
 void SoundAnimator::setColorAmplitudeAnimation() {
     isAnimating = true;
-    currentAnimation = COLOR_AMPLITUDE;
+    currentRenderMethod = &SoundAnimator::renderColorAmplitude; // Указываем метод рендера
 }
 
 // Установка зелёной анимации
 void SoundAnimator::setGreenAmplitudeAnimation() {
     isAnimating = true;
-    currentAnimation = GREEN_AMPLITUDE;
+    currentRenderMethod = &SoundAnimator::renderGreenAmplitude; // Указываем метод рендера
 }
 
 // Обновление визуализации
 void SoundAnimator::update() {
-    if (!isAnimating) return;
+    if (!isAnimating || currentRenderMethod == nullptr) return;
 
-    switch (currentAnimation) {
-        case COLOR_AMPLITUDE:
-            renderColorAmplitude();
-            break;
-        case GREEN_AMPLITUDE:
-            renderGreenAmplitude();
-            break;
-        default:
-            break;
-    }
+    // Вызываем текущий метод рендера
+    (this->*currentRenderMethod)();
 }
 
 // Задача обновления
@@ -86,18 +81,25 @@ void SoundAnimator::animationTask(void* param) {
         animator->update();
         vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL));
     }
+    animator->animationTaskHandle = nullptr; // Сбрасываем handle
     vTaskDelete(nullptr); // Завершаем задачу корректно
+}
+
+void SoundAnimator::initializeAudioAnalyzer() {
+    audioAnalyzer.begin(); // Инициализация AudioAnalyzer
+    
 }
 
 // Запуск задачи
 void SoundAnimator::startTask() {
+    
     if (animationTaskHandle == nullptr) {
         Serial.println("[SoundAnimator] Starting animation task...");
         isAnimating = true;
         xTaskCreatePinnedToCore(
             animationTask,
             "AnimationTask",
-            2048,
+            4096, // Увеличьте размер стека, если требуется
             this,
             1,
             &animationTaskHandle,
@@ -114,7 +116,11 @@ void SoundAnimator::stopTask() {
     if (animationTaskHandle != nullptr) {
         Serial.println("[SoundAnimator] Stopping animation task...");
         isAnimating = false; // Позволим задаче выйти корректно
-        animationTaskHandle = nullptr;
+
+        // Ожидаем завершения задачи
+        while (animationTaskHandle != nullptr) {
+            vTaskDelay(pdMS_TO_TICKS(10)); // Небольшая задержка для ожидания завершения
+        }
 
         ledMatrix.clear();
         ledMatrix.update();

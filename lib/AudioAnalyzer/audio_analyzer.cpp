@@ -37,41 +37,95 @@ void AudioAnalyzer::begin() {
 }
 
 void AudioAnalyzer::loadSettings() {
-    if (!preferences.begin("audioanalyzer", true)) {
-        Serial.println("[AudioAnalyzer] Failed to open preferences for reading.");
-        return;
+    if (!preferences.isKey("sensReduct")) {
+        Serial.println("[AudioAnalyzer] Key 'sensReduct' not found. Using default value.");
+        sensitivityReduction = DEFAULT_SENSITIVITY_REDUCTION;
+        preferences.putFloat("sensReduct", sensitivityReduction);
+    } else {
+        sensitivityReduction = preferences.getFloat("sensReduct", DEFAULT_SENSITIVITY_REDUCTION);
     }
-
-    sensitivityReduction = preferences.getFloat("sensReduct", DEFAULT_SENSITIVITY_REDUCTION);
     Serial.printf("[AudioAnalyzer] Loaded sensitivityReduction: %.2f\n", sensitivityReduction);
 
-    lowFreqGain = preferences.getFloat("lowGain", DEFAULT_LOW_FREQ_GAIN);
+    if (!preferences.isKey("lowGain")) {
+        Serial.println("[AudioAnalyzer] Key 'lowGain' not found. Using default value.");
+        lowFreqGain = DEFAULT_LOW_FREQ_GAIN;
+        preferences.putFloat("lowGain", lowFreqGain);
+    } else {
+        lowFreqGain = preferences.getFloat("lowGain", DEFAULT_LOW_FREQ_GAIN);
+    }
     Serial.printf("[AudioAnalyzer] Loaded lowFreqGain: %.2f\n", lowFreqGain);
 
-    midFreqGain = preferences.getFloat("midGain", DEFAULT_MID_FREQ_GAIN);
+    if (!preferences.isKey("midGain")) {
+        Serial.println("[AudioAnalyzer] Key 'midGain' not found. Using default value.");
+        midFreqGain = DEFAULT_MID_FREQ_GAIN;
+        preferences.putFloat("midGain", midFreqGain);
+    } else {
+        midFreqGain = preferences.getFloat("midGain", DEFAULT_MID_FREQ_GAIN);
+    }
     Serial.printf("[AudioAnalyzer] Loaded midFreqGain: %.2f\n", midFreqGain);
 
-    highFreqGain = preferences.getFloat("highGain", DEFAULT_HIGH_FREQ_GAIN);
+    if (!preferences.isKey("highGain")) {
+        Serial.println("[AudioAnalyzer] Key 'highGain' not found. Using default value.");
+        highFreqGain = DEFAULT_HIGH_FREQ_GAIN;
+        preferences.putFloat("highGain", highFreqGain);
+    } else {
+        highFreqGain = preferences.getFloat("highGain", DEFAULT_HIGH_FREQ_GAIN);
+    }
     Serial.printf("[AudioAnalyzer] Loaded highFreqGain: %.2f\n", highFreqGain);
 
-    alpha = preferences.getFloat("alpha", DEFAULT_ALPHA);
+    if (!preferences.isKey("alpha")) {
+        Serial.println("[AudioAnalyzer] Key 'alpha' not found. Using default value.");
+        alpha = DEFAULT_ALPHA;
+        preferences.putFloat("alpha", alpha);
+    } else {
+        alpha = preferences.getFloat("alpha", DEFAULT_ALPHA);
+    }
     Serial.printf("[AudioAnalyzer] Loaded alpha: %.2f\n", alpha);
 
-    fMin = preferences.getFloat("fMin", DEFAULT_FMIN);
+    if (!preferences.isKey("fMin")) {
+        Serial.println("[AudioAnalyzer] Key 'fMin' not found. Using default value.");
+        fMin = DEFAULT_FMIN;
+        preferences.putFloat("fMin", fMin);
+    } else {
+        fMin = preferences.getFloat("fMin", DEFAULT_FMIN);
+    }
     Serial.printf("[AudioAnalyzer] Loaded fMin: %.2f\n", fMin);
 
-    fMax = preferences.getFloat("fMax", DEFAULT_FMAX);
+    if (!preferences.isKey("fMax")) {
+        Serial.println("[AudioAnalyzer] Key 'fMax' not found. Using default value.");
+        fMax = DEFAULT_FMAX;
+        preferences.putFloat("fMax", fMax);
+    } else {
+        fMax = preferences.getFloat("fMax", DEFAULT_FMAX);
+    }
     Serial.printf("[AudioAnalyzer] Loaded fMax: %.2f\n", fMax);
 
-    noiseThresholdRatio = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO);
+    if (!preferences.isKey("nThresh")) {
+        Serial.println("[AudioAnalyzer] Key 'nThresh' not found. Using default value.");
+        noiseThresholdRatio = DEFAULT_NOISE_THRESHOLD_RATIO;
+        preferences.putFloat("nThresh", noiseThresholdRatio);
+    } else {
+        noiseThresholdRatio = preferences.getFloat("nThresh", DEFAULT_NOISE_THRESHOLD_RATIO);
+    }
     Serial.printf("[AudioAnalyzer] Loaded noiseThresholdRatio: %.2f\n", noiseThresholdRatio);
 
-    bandDecay = preferences.getFloat("bDecay", DEFAULT_BAND_DECAY);
+    if (!preferences.isKey("bDecay")) {
+        Serial.println("[AudioAnalyzer] Key 'bDecay' not found. Using default value.");
+        bandDecay = DEFAULT_BAND_DECAY;
+        preferences.putFloat("bDecay", bandDecay);
+    } else {
+        bandDecay = preferences.getFloat("bDecay", DEFAULT_BAND_DECAY);
+    }
     Serial.printf("[AudioAnalyzer] Loaded bandDecay: %.2f\n", bandDecay);
 
-    bandCeiling = preferences.getInt("bCeil", DEFAULT_BAND_CEILING);
+    if (!preferences.isKey("bCeil")) {
+        Serial.println("[AudioAnalyzer] Key 'bCeil' not found. Using default value.");
+        bandCeiling = DEFAULT_BAND_CEILING;
+        preferences.putInt("bCeil", bandCeiling);
+    } else {
+        bandCeiling = preferences.getInt("bCeil", DEFAULT_BAND_CEILING);
+    }
     Serial.printf("[AudioAnalyzer] Loaded bandCeiling: %d\n", bandCeiling);
-
     preferences.end();
 }
 
@@ -175,12 +229,12 @@ void AudioAnalyzer::setBandCeiling(int value) {
     }
 }
 
-void AudioAnalyzer::processAudio(int micPin) {
+void AudioAnalyzer::processAudio() {
     double avg = 0;
-    double lastSample = analogRead(micPin);
+    double lastSample = analogRead(MIC_PIN);
 
     for (int i = 0; i < SAMPLES; i++) {
-        double raw = analogRead(micPin);
+        double raw = analogRead(MIC_PIN);
         vReal[i] = alpha * raw + (1.0f - alpha) * lastSample;
         lastSample = vReal[i];
         avg += vReal[i];

@@ -42,7 +42,7 @@ public:
     ~AudioAnalyzer();
 
     void begin();
-    void processAudio(int micPin);
+    void processAudio();
     void getNormalizedHeights(uint16_t* heights, int matrixHeight);
 
     // Методы для настройки параметров

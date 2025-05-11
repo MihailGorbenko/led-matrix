@@ -9,7 +9,7 @@
 #define MATRIX_WIDTH 10
 #define MATRIX_HEIGHT 9
 #define NUM_LEDS (MATRIX_WIDTH * MATRIX_HEIGHT)
-#define BRIGHTNESS 64
+#define BRIGHTNESS 30
 #define UPDATE_INTERVAL (1000 / 50)
 
 // Настройки аудиоанализатора

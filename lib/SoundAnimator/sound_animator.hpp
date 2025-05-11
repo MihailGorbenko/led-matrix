@@ -5,15 +5,9 @@
 #include "audio_analyzer.hpp"
 #include "matrix_task.hpp"
 
-enum AnimationType {
-    NONE,
-    COLOR_AMPLITUDE,
-    GREEN_AMPLITUDE
-};
-
 class SoundAnimator : public MatrixTask {
 public:
-    SoundAnimator(LedMatrix& matrix, AudioAnalyzer& analyzer);
+    SoundAnimator(LedMatrix& matrix);
 
     // Методы установки анимаций
     void setColorAmplitudeAnimation();
@@ -21,21 +15,24 @@ public:
     
     // Обновление текущей анимации
     void update();
+    void initializeAudioAnalyzer();
 
     // Управление задачей
     void startTask() override;
     void stopTask() override;
 
-    // Доступ к анализатору
-    AudioAnalyzer& getAnalyzer() { return audioAnalyzer; }
+    // Метод для получения ссылки на AudioAnalyzer
+    AudioAnalyzer& getAudioAnalyzer();
 
 private:
     LedMatrix& ledMatrix;
-    AudioAnalyzer& audioAnalyzer;
+    AudioAnalyzer audioAnalyzer;
 
     unsigned long lastUpdateTime = 0;
     bool isAnimating = false;
-    AnimationType currentAnimation = NONE;
+
+    // Указатель на текущий метод рендера
+    void (SoundAnimator::*currentRenderMethod)() = nullptr;
 
     // Методы отрисовки конкретных анимаций
     void renderColorAmplitude();
