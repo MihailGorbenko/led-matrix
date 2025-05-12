@@ -1,21 +1,22 @@
 #include "sound_animator.hpp"
 #include "config.hpp"
+#include <cmath>
 
 // Конструктор
 SoundAnimator::SoundAnimator(LedMatrix& matrix)
     : ledMatrix(matrix),
-      audioAnalyzer(), // Инициализация AudioAnalyzer
+      audioAnalyzer(),
       lastUpdateTime(0),
       isAnimating(false),
       currentRenderMethod(nullptr),
       animationTaskHandle(nullptr) {}
 
-// Метод для получения ссылки на AudioAnalyzer
+// Получение ссылки на анализатор
 AudioAnalyzer& SoundAnimator::getAudioAnalyzer() {
     return audioAnalyzer;
 }
 
-// Визуализация: цветная амплитуда (по высоте)
+// Цветная амплитуда по полосам
 void SoundAnimator::renderColorAmplitude() {
     audioAnalyzer.processAudio();
 
@@ -23,19 +24,19 @@ void SoundAnimator::renderColorAmplitude() {
     audioAnalyzer.getNormalizedHeights(heights, MATRIX_WIDTH);
 
     CRGB* leds = ledMatrix.getLeds();
-    ledMatrix.clear();
+    fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
 
     for (int x = 0; x < MATRIX_WIDTH; x++) {
-        for (int y = max(0, MATRIX_HEIGHT - heights[x]); y < MATRIX_HEIGHT; y++) {
-            uint8_t hue = map(heights[x], 0, MATRIX_HEIGHT, 0, 255);
+        uint8_t hue = map(heights[x], 0, MATRIX_HEIGHT, 0, 255);
+        for (int y = MATRIX_HEIGHT - heights[x]; y < MATRIX_HEIGHT; y++) {
             leds[ledMatrix.XY(x, y)] = CHSV(hue, 255, 255);
         }
     }
 
-    ledMatrix.update();
+    FastLED.show();
 }
 
-// Визуализация: зелёная амплитуда
+// Зелёная амплитуда
 void SoundAnimator::renderGreenAmplitude() {
     audioAnalyzer.processAudio();
 
@@ -43,128 +44,122 @@ void SoundAnimator::renderGreenAmplitude() {
     audioAnalyzer.getNormalizedHeights(heights, MATRIX_WIDTH);
 
     CRGB* leds = ledMatrix.getLeds();
-    ledMatrix.clear();
+    fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
 
     for (int x = 0; x < MATRIX_WIDTH; x++) {
-        for (int y = max(0, MATRIX_HEIGHT - heights[x]); y < MATRIX_HEIGHT; y++) {
+        for (int y = MATRIX_HEIGHT - heights[x]; y < MATRIX_HEIGHT; y++) {
             leds[ledMatrix.XY(x, y)] = CRGB::Green;
         }
     }
 
-    ledMatrix.update();
+    FastLED.show();
 }
 
-// Визуализация: пульсирующее кольцо
+// Пульсирующее кольцо (оптимизировано)
 void SoundAnimator::renderPulsingRing() {
     audioAnalyzer.processAudio();
-
-    // Получаем среднее значение логарифмической мощности
     float avgLogPower = audioAnalyzer.getSmoothedLogPower();
 
-    // Выводим значение в Serial
-    Serial.printf("[SoundAnimator] Smoothed Log Power: %.2f\n", avgLogPower);
+    uint8_t radius = map(avgLogPower * 10, 150, 260, 1, MATRIX_WIDTH / 2);
+    radius = constrain(radius, 1, MATRIX_WIDTH / 2);
 
-    // Преобразуем логарифмическую мощность в радиус кольца
-    int radius = map(avgLogPower, 20, 30, 0, MATRIX_WIDTH / 2); // Обновлён диапазон входных значений
-    radius = constrain(radius, 0, MATRIX_WIDTH / 2); // Ограничиваем радиус
+    uint8_t hue = map(radius, 1, MATRIX_WIDTH / 2, 0, 255);
+    CHSV color(hue, 255, 255);
 
-    Serial.printf("[SoundAnimator] Calculated Radius: %d\n", radius);
+    constexpr float aspectRatio = static_cast<float>(MATRIX_WIDTH) / MATRIX_HEIGHT;
+    constexpr float centerX = MATRIX_WIDTH / 2.0f;
+    constexpr float centerY = MATRIX_HEIGHT / 2.0f;
+
+    constexpr uint8_t angleStep = 6;
+    constexpr uint8_t numSteps = 360 / angleStep;
+
+    static constexpr float radiansLUT[numSteps] = [] {
+        float arr[numSteps] = {};
+        for (int i = 0; i < numSteps; ++i)
+            arr[i] = (i * angleStep) * PI / 180.0f;
+        return arr;
+    }();
 
     CRGB* leds = ledMatrix.getLeds();
-    ledMatrix.clear();
+    fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
 
-    // Отрисовка кольца
-    for (int angle = 0; angle < 360; angle += 5) { // Шаг угла для плотности кольца
-        int xPos = MATRIX_WIDTH / 2 + radius * cos(radians(angle));
-        int yPos = MATRIX_HEIGHT / 2 + radius * sin(radians(angle));
+    for (uint8_t i = 0; i < numSteps; ++i) {
+        float angle = radiansLUT[i];
 
-        if (xPos >= 0 && xPos < MATRIX_WIDTH && yPos >= 0 && yPos < MATRIX_HEIGHT) {
-            leds[ledMatrix.XY(xPos, yPos)] = CHSV(map(radius, 0, MATRIX_WIDTH / 2, 0, 255), 255, 255);
+        int xi = roundf(centerX + radius * cosf(angle));
+        int yi = roundf(centerY + radius * sinf(angle) * aspectRatio);
+
+        if (xi >= 0 && xi < MATRIX_WIDTH && yi >= 0 && yi < MATRIX_HEIGHT) {
+            leds[ledMatrix.XY(xi, yi)] = color;
         }
     }
 
-    ledMatrix.update();
+    FastLED.show();
 }
 
-// Установка цветной анимации
+// Методы выбора анимации
 void SoundAnimator::setColorAmplitudeAnimation() {
     isAnimating = true;
-    currentRenderMethod = &SoundAnimator::renderColorAmplitude; // Указываем метод рендера
+    currentRenderMethod = &SoundAnimator::renderColorAmplitude;
 }
 
-// Установка зелёной анимации
 void SoundAnimator::setGreenAmplitudeAnimation() {
     isAnimating = true;
-    currentRenderMethod = &SoundAnimator::renderGreenAmplitude; // Указываем метод рендера
+    currentRenderMethod = &SoundAnimator::renderGreenAmplitude;
 }
 
-// Установка анимации пульсирующего кольца
 void SoundAnimator::setPulsingRingAnimation() {
     isAnimating = true;
-    currentRenderMethod = &SoundAnimator::renderPulsingRing; // Указываем метод рендера
+    currentRenderMethod = &SoundAnimator::renderPulsingRing;
 }
 
-// Обновление визуализации
+// Обновление текущего кадра
 void SoundAnimator::update() {
     if (!isAnimating || currentRenderMethod == nullptr) return;
-
-    // Вызываем текущий метод рендера
     (this->*currentRenderMethod)();
 }
 
-// Задача обновления
+// Задача для обновления анимации
 void SoundAnimator::animationTask(void* param) {
     SoundAnimator* animator = static_cast<SoundAnimator*>(param);
     while (animator->isAnimating) {
         animator->update();
         vTaskDelay(pdMS_TO_TICKS(UPDATE_INTERVAL));
     }
-    animator->animationTaskHandle = nullptr; // Сбрасываем handle
-    vTaskDelete(nullptr); // Завершаем задачу корректно
+    animator->animationTaskHandle = nullptr;
+    vTaskDelete(nullptr);
 }
 
+// Инициализация анализатора
 void SoundAnimator::initializeAudioAnalyzer() {
-    audioAnalyzer.begin(); // Инициализация AudioAnalyzer
-    
+    audioAnalyzer.begin();
 }
 
-// Запуск задачи
+// Запуск анимации в отдельной задаче
 void SoundAnimator::startTask() {
-    
     if (animationTaskHandle == nullptr) {
-        Serial.println("[SoundAnimator] Starting animation task...");
         isAnimating = true;
         xTaskCreatePinnedToCore(
             animationTask,
             "AnimationTask",
-            4096, // Увеличьте размер стека, если требуется
+            4096,
             this,
             1,
             &animationTaskHandle,
             1
         );
-        Serial.println("[SoundAnimator] Animation task started.");
-    } else {
-        Serial.println("[SoundAnimator] Animation task is already running.");
     }
 }
 
-// Остановка задачи
+// Остановка анимации и задачи
 void SoundAnimator::stopTask() {
     if (animationTaskHandle != nullptr) {
-        Serial.println("[SoundAnimator] Stopping animation task...");
-        isAnimating = false; // Позволим задаче выйти корректно
-
-        // Ожидаем завершения задачи
+        isAnimating = false;
         while (animationTaskHandle != nullptr) {
-            vTaskDelay(pdMS_TO_TICKS(10)); // Небольшая задержка для ожидания завершения
+            vTaskDelay(pdMS_TO_TICKS(10));
         }
 
         ledMatrix.clear();
         ledMatrix.update();
-
-        Serial.println("[SoundAnimator] Animation task stopped.");
-    } else {
-        Serial.println("[SoundAnimator] No animation task to stop.");
     }
 }
