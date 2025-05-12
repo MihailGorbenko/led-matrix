@@ -32,6 +32,7 @@ private:
     uint16_t bands[MATRIX_WIDTH];
     uint16_t smoothedBands[MATRIX_WIDTH];
     float maxAmplitude;
+    float logPowerSmoothed;
 
     void calculateBands();
     void smoothBands();
@@ -44,6 +45,7 @@ public:
     void begin();
     void processAudio();
     void getNormalizedHeights(uint16_t* heights, int matrixHeight);
+    float getSmoothedLogPower();
 
     // Методы для настройки параметров
     void setSensitivityReduction(float value);

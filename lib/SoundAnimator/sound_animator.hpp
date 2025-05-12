@@ -12,7 +12,8 @@ public:
     // Методы установки анимаций
     void setColorAmplitudeAnimation();
     void setGreenAmplitudeAnimation();
-    
+    void setPulsingRingAnimation();
+
     // Обновление текущей анимации
     void update();
     void initializeAudioAnalyzer();
@@ -37,6 +38,7 @@ private:
     // Методы отрисовки конкретных анимаций
     void renderColorAmplitude();
     void renderGreenAmplitude();
+    void renderPulsingRing();
 
     // FreeRTOS задача
     static void animationTask(void* param);

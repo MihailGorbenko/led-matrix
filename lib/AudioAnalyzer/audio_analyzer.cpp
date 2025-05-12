@@ -129,6 +129,27 @@ void AudioAnalyzer::loadSettings() {
     preferences.end();
 }
 
+float AudioAnalyzer::getSmoothedLogPower() {
+    // Обновляем массив smoothedBands
+    smoothBands();
+    float sumLogPower = 0.0f;
+
+    for (int i = 0; i < MATRIX_WIDTH; i++) {
+
+        // Вычисляем логарифмическую мощность для каждой полосы
+        float logPower = (smoothedBands[i] > 0) ? 10.0f * log10(smoothedBands[i]) : 0.0f;
+
+        // Ограничиваем значение логарифмической мощности
+        logPower = constrain(logPower, 0.0f, (float)bandCeiling);
+
+        // Суммируем значения
+        sumLogPower += logPower;
+    }
+
+    // Возвращаем среднее значение
+    return sumLogPower / MATRIX_WIDTH;
+}
+
 void AudioAnalyzer::resetSettings() {
     if (!preferences.begin("audioanalyzer", false)) {
         Serial.println("[AudioAnalyzer] Failed to open preferences for resetting.");

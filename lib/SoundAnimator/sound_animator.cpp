@@ -54,6 +54,38 @@ void SoundAnimator::renderGreenAmplitude() {
     ledMatrix.update();
 }
 
+// Визуализация: пульсирующее кольцо
+void SoundAnimator::renderPulsingRing() {
+    audioAnalyzer.processAudio();
+
+    // Получаем среднее значение логарифмической мощности
+    float avgLogPower = audioAnalyzer.getSmoothedLogPower();
+
+    // Выводим значение в Serial
+    Serial.printf("[SoundAnimator] Smoothed Log Power: %.2f\n", avgLogPower);
+
+    // Преобразуем логарифмическую мощность в радиус кольца
+    int radius = map(avgLogPower, 20, 30, 0, MATRIX_WIDTH / 2); // Обновлён диапазон входных значений
+    radius = constrain(radius, 0, MATRIX_WIDTH / 2); // Ограничиваем радиус
+
+    Serial.printf("[SoundAnimator] Calculated Radius: %d\n", radius);
+
+    CRGB* leds = ledMatrix.getLeds();
+    ledMatrix.clear();
+
+    // Отрисовка кольца
+    for (int angle = 0; angle < 360; angle += 5) { // Шаг угла для плотности кольца
+        int xPos = MATRIX_WIDTH / 2 + radius * cos(radians(angle));
+        int yPos = MATRIX_HEIGHT / 2 + radius * sin(radians(angle));
+
+        if (xPos >= 0 && xPos < MATRIX_WIDTH && yPos >= 0 && yPos < MATRIX_HEIGHT) {
+            leds[ledMatrix.XY(xPos, yPos)] = CHSV(map(radius, 0, MATRIX_WIDTH / 2, 0, 255), 255, 255);
+        }
+    }
+
+    ledMatrix.update();
+}
+
 // Установка цветной анимации
 void SoundAnimator::setColorAmplitudeAnimation() {
     isAnimating = true;
@@ -64,6 +96,12 @@ void SoundAnimator::setColorAmplitudeAnimation() {
 void SoundAnimator::setGreenAmplitudeAnimation() {
     isAnimating = true;
     currentRenderMethod = &SoundAnimator::renderGreenAmplitude; // Указываем метод рендера
+}
+
+// Установка анимации пульсирующего кольца
+void SoundAnimator::setPulsingRingAnimation() {
+    isAnimating = true;
+    currentRenderMethod = &SoundAnimator::renderPulsingRing; // Указываем метод рендера
 }
 
 // Обновление визуализации

@@ -30,7 +30,7 @@ void setup() {
    
     // Запускаем анимацию
     soundAnimator.initializeAudioAnalyzer(); // Инициализация AudioAnalyzer
-    soundAnimator.setGreenAmplitudeAnimation();
+    soundAnimator.setPulsingRingAnimation(); // Установка анимации пульсирующего кольца
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
