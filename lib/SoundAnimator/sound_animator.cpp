@@ -1,6 +1,7 @@
 #include "sound_animator.hpp"
 #include "config.hpp"
 #include <cmath>
+#include <functional> // Для std::function
 
 // Конструктор
 SoundAnimator::SoundAnimator(LedMatrix& matrix)
@@ -55,43 +56,120 @@ void SoundAnimator::renderGreenAmplitude() {
     FastLED.show();
 }
 
-// Пульсирующее кольцо (оптимизировано)
-void SoundAnimator::renderPulsingRing() {
+// Пульсирующий прямоугольник
+void SoundAnimator::renderPulsingRectangle(CRGB color) {
     audioAnalyzer.processAudio();
     float avgLogPower = audioAnalyzer.getSmoothedLogPower();
 
-    uint8_t radius = map(avgLogPower * 10, 150, 260, 1, MATRIX_WIDTH / 2);
-    radius = constrain(radius, 1, MATRIX_WIDTH / 2);
+    // Усиливаем мощность для повышения чувствительности
+    float amplifiedLogPower = avgLogPower * 1.2f; // Увеличиваем чувствительность
 
-    uint8_t hue = map(radius, 1, MATRIX_WIDTH / 2, 0, 255);
-    CHSV color(hue, 255, 255);
+    // Преобразуем логарифмическую мощность в размеры прямоугольника
+    uint8_t rectWidth = map(amplifiedLogPower, 10, 30, 1, MATRIX_WIDTH);
+    uint8_t rectHeight = map(amplifiedLogPower,10, 30, 1, MATRIX_HEIGHT);
 
-    constexpr float aspectRatio = static_cast<float>(MATRIX_WIDTH) / MATRIX_HEIGHT;
-    constexpr float centerX = MATRIX_WIDTH / 2.0f;
-    constexpr float centerY = MATRIX_HEIGHT / 2.0f;
-
-    constexpr uint8_t angleStep = 6;
-    constexpr uint8_t numSteps = 360 / angleStep;
-
-    static constexpr float radiansLUT[numSteps] = [] {
-        float arr[numSteps] = {};
-        for (int i = 0; i < numSteps; ++i)
-            arr[i] = (i * angleStep) * PI / 180.0f;
-        return arr;
-    }();
+    rectWidth = constrain(rectWidth, 1, MATRIX_WIDTH);
+    rectHeight = constrain(rectHeight, 1, MATRIX_HEIGHT);
 
     CRGB* leds = ledMatrix.getLeds();
     fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
 
-    for (uint8_t i = 0; i < numSteps; ++i) {
-        float angle = radiansLUT[i];
+    // Вычисляем координаты прямоугольника
+    int centerX = MATRIX_WIDTH / 2;
+    int centerY = (MATRIX_HEIGHT / 2); // Смещаем центр на одну строку выше
 
-        int xi = roundf(centerX + radius * cosf(angle));
-        int yi = roundf(centerY + radius * sinf(angle) * aspectRatio);
+    int startX = centerX - rectWidth / 2;
+    int startY = centerY - rectHeight / 2;
+    int endX = centerX + rectWidth / 2 - 1;
+    int endY = centerY + rectHeight / 2 - 1;
 
-        if (xi >= 0 && xi < MATRIX_WIDTH && yi >= 0 && yi < MATRIX_HEIGHT) {
-            leds[ledMatrix.XY(xi, yi)] = color;
-        }
+    // Рисуем только границы прямоугольника
+    for (int x = startX; x <= endX; x++) {
+        leds[ledMatrix.XY(x, startY)] = color; // Верхняя граница
+        leds[ledMatrix.XY(x, endY)] = color;   // Нижняя граница
+    }
+
+    for (int y = startY; y <= endY; y++) {
+        leds[ledMatrix.XY(startX, y)] = color; // Левая граница
+        leds[ledMatrix.XY(endX, y)] = color;   // Правая граница
+    }
+
+    FastLED.show();
+}
+
+// Звёздное небо
+void SoundAnimator::renderStarrySky(CRGB color ) {
+    audioAnalyzer.processAudio();
+    float avgLogPower = audioAnalyzer.getSmoothedLogPower();
+
+    // Усиливаем мощность для повышения чувствительности
+    float amplifiedLogPower = avgLogPower * 1.5;
+
+    // Количество звёзд зависит от мощности звука
+    uint8_t starCount = map(amplifiedLogPower, 10, 35, 1, 20);
+    starCount = constrain(starCount, 1, 20);
+
+    CRGB* leds = ledMatrix.getLeds();
+
+    // Добавляем эффект "следа"
+    for (int i = 0; i < MATRIX_WIDTH * MATRIX_HEIGHT; i++) {
+        leds[i].nscale8(200); // Затухание предыдущего кадра
+    }
+
+    // Рисуем звёзды
+    for (int i = 0; i < starCount; i++) {
+        int x = random(0, MATRIX_WIDTH);
+        int y = random(0, MATRIX_HEIGHT);
+
+        // Яркость звезды зависит от мощности звука
+        uint8_t brightness = map(amplifiedLogPower, 10, 35, 50, 255);
+        brightness = constrain(brightness, 50, 255);
+
+        leds[ledMatrix.XY(x, y)] = color.nscale8(brightness); // Цвет звезды с яркостью
+    }
+
+    FastLED.show();
+}
+
+// Волна
+void SoundAnimator::renderWave(CRGB color) {
+    audioAnalyzer.processAudio();
+    float avgLogPower = audioAnalyzer.getSmoothedLogPower();
+
+    // Усиливаем мощность для повышения чувствительности
+    float amplifiedLogPower = avgLogPower * 1.5;
+
+    // Высота волны зависит от мощности звука
+    uint8_t waveHeight = map(amplifiedLogPower, 10, 35, 1, MATRIX_HEIGHT / 2);
+    waveHeight = constrain(waveHeight, 1, MATRIX_HEIGHT / 2);
+
+    // Смещение по фазе для анимации
+    static float phase = 0.0;
+    phase += 0.1; // Скорость движения волны
+
+    CRGB* leds = ledMatrix.getLeds();
+    fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
+
+    // Рисуем основную волну
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+        // Вычисляем вертикальную позицию основной волны
+        int centerY = MATRIX_HEIGHT / 2;
+        int waveY = centerY + sin(phase + x * 0.3) * waveHeight;
+
+        // Ограничиваем координаты волны
+        waveY = constrain(waveY, 0, MATRIX_HEIGHT - 1);
+
+        // Рисуем пиксель основной волны
+        leds[ledMatrix.XY(x, waveY)] = color;
+
+        // Вычисляем вертикальную позицию зеркальной волны
+        int mirroredWaveY = centerY - (waveY - centerY);
+
+        // Ограничиваем координаты зеркальной волны
+        mirroredWaveY = constrain(mirroredWaveY, 0, MATRIX_HEIGHT - 1);
+
+        // Рисуем пиксель зеркальной волны
+        leds[ledMatrix.XY(x, mirroredWaveY)] = color;
     }
 
     FastLED.show();
@@ -100,23 +178,33 @@ void SoundAnimator::renderPulsingRing() {
 // Методы выбора анимации
 void SoundAnimator::setColorAmplitudeAnimation() {
     isAnimating = true;
-    currentRenderMethod = &SoundAnimator::renderColorAmplitude;
+    currentRenderMethod = [this]() { renderColorAmplitude(); };
 }
 
 void SoundAnimator::setGreenAmplitudeAnimation() {
     isAnimating = true;
-    currentRenderMethod = &SoundAnimator::renderGreenAmplitude;
+    currentRenderMethod = [this]() { renderGreenAmplitude(); };
 }
 
-void SoundAnimator::setPulsingRingAnimation() {
+void SoundAnimator::setPulsingRectangleAnimation(CRGB color) {
     isAnimating = true;
-    currentRenderMethod = &SoundAnimator::renderPulsingRing;
+    currentRenderMethod = [this, color]() { renderPulsingRectangle(color); };
+}
+
+void SoundAnimator::setStarrySkyAnimation(CRGB color) {
+    isAnimating = true;
+    currentRenderMethod = [this, color]() { renderStarrySky(color); };
+}
+
+void SoundAnimator::setWaveAnimation(CRGB color) {
+    isAnimating = true;
+    currentRenderMethod = [this, color]() { renderWave(color); };
 }
 
 // Обновление текущего кадра
 void SoundAnimator::update() {
-    if (!isAnimating || currentRenderMethod == nullptr) return;
-    (this->*currentRenderMethod)();
+    if (!isAnimating || !currentRenderMethod) return;
+    currentRenderMethod(); // Вызываем текущий метод рендера
 }
 
 // Задача для обновления анимации

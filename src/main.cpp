@@ -10,6 +10,10 @@ LedMatrix ledMatrix;
 SoundAnimator soundAnimator(ledMatrix); 
 MatrixTask* currentMatrixTask = &soundAnimator; // Указатель на задачу матрицы
 
+// Переменные для управления анимацией
+unsigned long lastAnimationChangeTime = 0; // Время последнего переключения анимации
+const unsigned long animationInterval = 60 * 1000; // Интервал в 1 минуту
+int currentAnimationIndex = 0; // Индекс текущей анимации
 
 void setup() {
     Serial.begin(115200);
@@ -30,14 +34,40 @@ void setup() {
    
     // Запускаем анимацию
     soundAnimator.initializeAudioAnalyzer(); // Инициализация AudioAnalyzer
-    soundAnimator.setPulsingRingAnimation(); // Установка анимации пульсирующего кольца
+    soundAnimator.setWaveAnimation(CRGB::Green); // Установка начальной анимации
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
 }
 
 void loop() {
+    // Проверяем, прошло ли 1 минута
+    unsigned long currentTime = millis();
+    if (currentTime - lastAnimationChangeTime >= animationInterval) {
+        lastAnimationChangeTime = currentTime;
 
-    delay(1000); // Задержка в 1 секунду для предотвращения перегрузки Serial
+        // Переключаем анимацию
+        currentAnimationIndex = (currentAnimationIndex + 1) % 4; // Переключаем между 4 анимациями
 
+        switch (currentAnimationIndex) {
+            case 0:
+                soundAnimator.setStarrySkyAnimation(CRGB::Green); // Звёздное небо
+                Serial.println("Switched to Starry Sky Animation");
+                break;
+            case 1:
+                soundAnimator.setPulsingRectangleAnimation(CRGB::Green); // Пульсирующий прямоугольник
+                Serial.println("Switched to Pulsing Rectangle Animation");
+                break;
+            case 2:
+                soundAnimator.setGreenAmplitudeAnimation(); // Зелёная амплитуда
+                Serial.println("Switched to Green Amplitude Animation");
+                break;
+            case 3:
+                soundAnimator.setWaveAnimation(CRGB::Green); // Волна
+                Serial.println("Switched to Wave Animation");
+                break;
+        }
+    }
+
+    delay(1000); // Задержка в 1 секунду для предотвращения перегрузки
 }

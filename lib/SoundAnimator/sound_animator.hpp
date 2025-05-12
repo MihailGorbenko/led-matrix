@@ -4,6 +4,7 @@
 #include "led_matrix.hpp"
 #include "audio_analyzer.hpp"
 #include "matrix_task.hpp"
+#include <functional> // Для std::function
 
 class SoundAnimator : public MatrixTask {
 public:
@@ -12,7 +13,9 @@ public:
     // Методы установки анимаций
     void setColorAmplitudeAnimation();
     void setGreenAmplitudeAnimation();
-    void setPulsingRingAnimation();
+    void setPulsingRectangleAnimation(CRGB color = CRGB::Green);
+    void setStarrySkyAnimation(CRGB color = CRGB::White);
+    void setWaveAnimation(CRGB color = CRGB::Aqua);
 
     // Обновление текущей анимации
     void update();
@@ -33,12 +36,16 @@ private:
     bool isAnimating = false;
 
     // Указатель на текущий метод рендера
-    void (SoundAnimator::*currentRenderMethod)() = nullptr;
+    std::function<void()> currentRenderMethod = nullptr;
 
     // Методы отрисовки конкретных анимаций
     void renderColorAmplitude();
     void renderGreenAmplitude();
-    void renderPulsingRing();
+    void renderPulsingRectangle();
+    void renderPulsingRectangle(CRGB color);
+    void renderStarrySky();
+    void renderStarrySky(CRGB color = CRGB::White);
+    void renderWave(CRGB color);
 
     // FreeRTOS задача
     static void animationTask(void* param);
