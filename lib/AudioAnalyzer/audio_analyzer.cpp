@@ -129,25 +129,22 @@ void AudioAnalyzer::loadSettings() {
     preferences.end();
 }
 
-float AudioAnalyzer::getSmoothedLogPower() {
-    // Обновляем массив smoothedBands
-    smoothBands();
-    float sumLogPower = 0.0f;
+float AudioAnalyzer::getTotalLogRmsEnergy() {
+    float rmsSum = 0.0f;
 
-    for (int i = 0; i < MATRIX_WIDTH; i++) {
-
-        // Вычисляем логарифмическую мощность для каждой полосы
-        float logPower = (smoothedBands[i] > 0) ? 10.0f * log10(smoothedBands[i]) : 0.0f;
-
-        // Ограничиваем значение логарифмической мощности
-        logPower = constrain(logPower, 0.0f, (float)bandCeiling);
-
-        // Суммируем значения
-        sumLogPower += logPower;
+    for (int i = 0; i < SAMPLES / 2; i++) {
+        rmsSum += vReal[i] * vReal[i];
     }
 
-    // Возвращаем среднее значение
-    return sumLogPower / MATRIX_WIDTH;
+    float rms = sqrtf(rmsSum / (SAMPLES / 2));
+
+    // Вычисляем логарифмическую энергию, добавляя 1.0 для защиты от log(0)
+    float logEnergy = 10.0f * log10f(rms + 1.0f);
+
+    // Ограничиваем значение
+    logEnergy = constrain(logEnergy, 0.0f, (float)bandCeiling);
+
+    return logEnergy;
 }
 
 void AudioAnalyzer::resetSettings() {

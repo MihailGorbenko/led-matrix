@@ -59,14 +59,14 @@ void SoundAnimator::renderGreenAmplitude() {
 // Пульсирующий прямоугольник
 void SoundAnimator::renderPulsingRectangle(CRGB color) {
     audioAnalyzer.processAudio();
-    float avgLogPower = audioAnalyzer.getSmoothedLogPower();
+    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy(); // Используем новый метод
 
     // Усиливаем мощность для повышения чувствительности
-    float amplifiedLogPower = avgLogPower * 1.2f; // Увеличиваем чувствительность
+    float amplifiedLogPower = avgLogPower * 1.1f; // Увеличиваем чувствительность
 
     // Преобразуем логарифмическую мощность в размеры прямоугольника
     uint8_t rectWidth = map(amplifiedLogPower, 10, 30, 1, MATRIX_WIDTH);
-    uint8_t rectHeight = map(amplifiedLogPower,10, 30, 1, MATRIX_HEIGHT);
+    uint8_t rectHeight = map(amplifiedLogPower, 10, 30, 1, MATRIX_HEIGHT);
 
     rectWidth = constrain(rectWidth, 1, MATRIX_WIDTH);
     rectHeight = constrain(rectHeight, 1, MATRIX_HEIGHT);
@@ -98,12 +98,12 @@ void SoundAnimator::renderPulsingRectangle(CRGB color) {
 }
 
 // Звёздное небо
-void SoundAnimator::renderStarrySky(CRGB color ) {
+void SoundAnimator::renderStarrySky(CRGB color) {
     audioAnalyzer.processAudio();
-    float avgLogPower = audioAnalyzer.getSmoothedLogPower();
+    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy(); // Используем новый метод
 
     // Усиливаем мощность для повышения чувствительности
-    float amplifiedLogPower = avgLogPower * 1.5;
+    float amplifiedLogPower = avgLogPower * 1.5f; // Увеличиваем чувствительность
 
     // Количество звёзд зависит от мощности звука
     uint8_t starCount = map(amplifiedLogPower, 10, 35, 1, 20);
@@ -134,10 +134,10 @@ void SoundAnimator::renderStarrySky(CRGB color ) {
 // Волна
 void SoundAnimator::renderWave(CRGB color) {
     audioAnalyzer.processAudio();
-    float avgLogPower = audioAnalyzer.getSmoothedLogPower();
+    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy(); // Используем новый метод
 
     // Усиливаем мощность для повышения чувствительности
-    float amplifiedLogPower = avgLogPower * 1.5;
+    float amplifiedLogPower = avgLogPower * 1.2;
 
     // Высота волны зависит от мощности звука
     uint8_t waveHeight = map(amplifiedLogPower, 10, 35, 1, MATRIX_HEIGHT / 2);

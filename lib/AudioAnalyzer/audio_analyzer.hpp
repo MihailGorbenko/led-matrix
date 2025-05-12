@@ -45,7 +45,7 @@ public:
     void begin();
     void processAudio();
     void getNormalizedHeights(uint16_t* heights, int matrixHeight);
-    float getSmoothedLogPower();
+    float getTotalLogRmsEnergy();
 
     // Методы для настройки параметров
     void setSensitivityReduction(float value);
