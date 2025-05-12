@@ -41,33 +41,33 @@ void setup() {
 }
 
 void loop() {
-    // // Проверяем, прошло ли 1 минута
-    // unsigned long currentTime = millis();
-    // if (currentTime - lastAnimationChangeTime >= animationInterval) {
-    //     lastAnimationChangeTime = currentTime;
+    // Проверяем, прошло ли 1 минута
+    unsigned long currentTime = millis();
+    if (currentTime - lastAnimationChangeTime >= animationInterval) {
+        lastAnimationChangeTime = currentTime;
 
-    //     // Переключаем анимацию
-    //     currentAnimationIndex = (currentAnimationIndex + 1) % 4; // Переключаем между 4 анимациями
+        // Переключаем анимацию
+        currentAnimationIndex = (currentAnimationIndex + 1) % 4; // Переключаем между 4 анимациями
 
-    //     switch (currentAnimationIndex) {
-    //         case 0:
-    //             soundAnimator.setStarrySkyAnimation(CRGB::Green); // Звёздное небо
-    //             Serial.println("Switched to Starry Sky Animation");
-    //             break;
-    //         case 1:
-    //             soundAnimator.setPulsingRectangleAnimation(CRGB::Green); // Пульсирующий прямоугольник
-    //             Serial.println("Switched to Pulsing Rectangle Animation");
-    //             break;
-    //         case 2:
-    //             soundAnimator.setGreenAmplitudeAnimation(); // Зелёная амплитуда
-    //             Serial.println("Switched to Green Amplitude Animation");
-    //             break;
-    //         case 3:
-    //             soundAnimator.setWaveAnimation(CRGB::Green); // Волна
-    //             Serial.println("Switched to Wave Animation");
-    //             break;
-    //     }
-    // }
+        switch (currentAnimationIndex) {
+            case 0:
+                soundAnimator.setStarrySkyAnimation(CRGB::Green); // Звёздное небо
+                Serial.println("Switched to Starry Sky Animation");
+                break;
+            case 1:
+                soundAnimator.setPulsingRectangleAnimation(CRGB::Green); // Пульсирующий прямоугольник
+                Serial.println("Switched to Pulsing Rectangle Animation");
+                break;
+            case 2:
+                soundAnimator.setGreenAmplitudeAnimation(); // Зелёная амплитуда
+                Serial.println("Switched to Green Amplitude Animation");
+                break;
+            case 3:
+                soundAnimator.setWaveAnimation(CRGB::Green); // Волна
+                Serial.println("Switched to Wave Animation");
+                break;
+        }
+    }
 
     delay(1000); // Задержка в 1 секунду для предотвращения перегрузки
 }

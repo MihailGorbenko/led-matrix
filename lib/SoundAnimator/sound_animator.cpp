@@ -3,6 +3,25 @@
 #include <cmath>
 #include <functional> // Для std::function
 
+// Константы для настройки анимаций
+const float COLOR_AMPLITUDE_SENSITIVITY = 1.5f;
+const float GREEN_AMPLITUDE_SENSITIVITY = 1.5f;
+const float PULSING_RECTANGLE_SENSITIVITY = 1.1f;
+const float STARRY_SKY_SENSITIVITY = 1.5f;
+const float WAVE_SENSITIVITY = 1.2f;
+
+const uint8_t STARRY_SKY_MAX_STARS = 20;
+const uint8_t STARRY_SKY_MIN_BRIGHTNESS = 50;
+const uint8_t STARRY_SKY_MAX_BRIGHTNESS = 255;
+
+const uint8_t FADE_AMOUNT = 200; // Затухание предыдущего кадра
+const float WAVE_PHASE_INCREMENT = 0.1f;
+const float WAVE_FREQUENCY = 0.3f;
+
+const uint8_t RECTANGLE_MIN_SIZE = 1;
+const uint8_t RECTANGLE_MAX_WIDTH = MATRIX_WIDTH;
+const uint8_t RECTANGLE_MAX_HEIGHT = MATRIX_HEIGHT;
+
 // Конструктор
 SoundAnimator::SoundAnimator(LedMatrix& matrix)
     : ledMatrix(matrix),
@@ -59,24 +78,24 @@ void SoundAnimator::renderGreenAmplitude() {
 // Пульсирующий прямоугольник
 void SoundAnimator::renderPulsingRectangle(CRGB color) {
     audioAnalyzer.processAudio();
-    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy(); // Используем новый метод
+    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy();
 
     // Усиливаем мощность для повышения чувствительности
-    float amplifiedLogPower = avgLogPower * 1.1f; // Увеличиваем чувствительность
+    float amplifiedLogPower = avgLogPower * PULSING_RECTANGLE_SENSITIVITY;
 
     // Преобразуем логарифмическую мощность в размеры прямоугольника
-    uint8_t rectWidth = map(amplifiedLogPower, 10, 30, 1, MATRIX_WIDTH);
-    uint8_t rectHeight = map(amplifiedLogPower, 10, 30, 1, MATRIX_HEIGHT);
+    uint8_t rectWidth = map(amplifiedLogPower, 10, 30, RECTANGLE_MIN_SIZE, RECTANGLE_MAX_WIDTH);
+    uint8_t rectHeight = map(amplifiedLogPower, 10, 30, RECTANGLE_MIN_SIZE, RECTANGLE_MAX_HEIGHT);
 
-    rectWidth = constrain(rectWidth, 1, MATRIX_WIDTH);
-    rectHeight = constrain(rectHeight, 1, MATRIX_HEIGHT);
+    rectWidth = constrain(rectWidth, RECTANGLE_MIN_SIZE, RECTANGLE_MAX_WIDTH);
+    rectHeight = constrain(rectHeight, RECTANGLE_MIN_SIZE, RECTANGLE_MAX_HEIGHT);
 
     CRGB* leds = ledMatrix.getLeds();
     fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
 
     // Вычисляем координаты прямоугольника
     int centerX = MATRIX_WIDTH / 2;
-    int centerY = (MATRIX_HEIGHT / 2); // Смещаем центр на одну строку выше
+    int centerY = MATRIX_HEIGHT / 2;
 
     int startX = centerX - rectWidth / 2;
     int startY = centerY - rectHeight / 2;
@@ -100,20 +119,20 @@ void SoundAnimator::renderPulsingRectangle(CRGB color) {
 // Звёздное небо
 void SoundAnimator::renderStarrySky(CRGB color) {
     audioAnalyzer.processAudio();
-    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy(); // Используем новый метод
+    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy();
 
     // Усиливаем мощность для повышения чувствительности
-    float amplifiedLogPower = avgLogPower * 1.5f; // Увеличиваем чувствительность
+    float amplifiedLogPower = avgLogPower * STARRY_SKY_SENSITIVITY;
 
     // Количество звёзд зависит от мощности звука
-    uint8_t starCount = map(amplifiedLogPower, 10, 35, 1, 20);
-    starCount = constrain(starCount, 1, 20);
+    uint8_t starCount = map(amplifiedLogPower, 10, 35, 1, STARRY_SKY_MAX_STARS);
+    starCount = constrain(starCount, 1, STARRY_SKY_MAX_STARS);
 
     CRGB* leds = ledMatrix.getLeds();
 
     // Добавляем эффект "следа"
     for (int i = 0; i < MATRIX_WIDTH * MATRIX_HEIGHT; i++) {
-        leds[i].nscale8(200); // Затухание предыдущего кадра
+        leds[i].nscale8(FADE_AMOUNT);
     }
 
     // Рисуем звёзды
@@ -122,10 +141,10 @@ void SoundAnimator::renderStarrySky(CRGB color) {
         int y = random(0, MATRIX_HEIGHT);
 
         // Яркость звезды зависит от мощности звука
-        uint8_t brightness = map(amplifiedLogPower, 10, 35, 50, 255);
-        brightness = constrain(brightness, 50, 255);
+        uint8_t brightness = map(amplifiedLogPower, 10, 35, STARRY_SKY_MIN_BRIGHTNESS, STARRY_SKY_MAX_BRIGHTNESS);
+        brightness = constrain(brightness, STARRY_SKY_MIN_BRIGHTNESS, STARRY_SKY_MAX_BRIGHTNESS);
 
-        leds[ledMatrix.XY(x, y)] = color.nscale8(brightness); // Цвет звезды с яркостью
+        leds[ledMatrix.XY(x, y)] = color.nscale8(brightness);
     }
 
     FastLED.show();
@@ -134,10 +153,10 @@ void SoundAnimator::renderStarrySky(CRGB color) {
 // Волна
 void SoundAnimator::renderWave(CRGB color) {
     audioAnalyzer.processAudio();
-    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy(); // Используем новый метод
+    float avgLogPower = audioAnalyzer.getTotalLogRmsEnergy();
 
     // Усиливаем мощность для повышения чувствительности
-    float amplifiedLogPower = avgLogPower * 1.2;
+    float amplifiedLogPower = avgLogPower * WAVE_SENSITIVITY;
 
     // Высота волны зависит от мощности звука
     uint8_t waveHeight = map(amplifiedLogPower, 10, 35, 1, MATRIX_HEIGHT / 2);
@@ -145,30 +164,23 @@ void SoundAnimator::renderWave(CRGB color) {
 
     // Смещение по фазе для анимации
     static float phase = 0.0;
-    phase += 0.1; // Скорость движения волны
+    phase += WAVE_PHASE_INCREMENT;
 
     CRGB* leds = ledMatrix.getLeds();
     fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
 
     // Рисуем основную волну
     for (int x = 0; x < MATRIX_WIDTH; x++) {
-        // Вычисляем вертикальную позицию основной волны
         int centerY = MATRIX_HEIGHT / 2;
-        int waveY = centerY + sin(phase + x * 0.3) * waveHeight;
+        int waveY = centerY + sin(phase + x * WAVE_FREQUENCY) * waveHeight;
 
-        // Ограничиваем координаты волны
         waveY = constrain(waveY, 0, MATRIX_HEIGHT - 1);
 
-        // Рисуем пиксель основной волны
         leds[ledMatrix.XY(x, waveY)] = color;
 
-        // Вычисляем вертикальную позицию зеркальной волны
         int mirroredWaveY = centerY - (waveY - centerY);
-
-        // Ограничиваем координаты зеркальной волны
         mirroredWaveY = constrain(mirroredWaveY, 0, MATRIX_HEIGHT - 1);
 
-        // Рисуем пиксель зеркальной волны
         leds[ledMatrix.XY(x, mirroredWaveY)] = color;
     }
 
