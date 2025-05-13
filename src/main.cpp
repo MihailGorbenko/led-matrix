@@ -37,6 +37,7 @@ void setup() {
 
     ledMatrix.begin(); // Инициализация матрицы
     ledMatrix.setBrightness(BRIGHTNESS);
+
    
     // Запускаем анимацию
     soundAnimator.init(); // Инициализация SoundAnimator
@@ -47,15 +48,18 @@ void setup() {
     soundAnimator.setStarrySkySensitivity(0.8f); // Чувствительность звёздного неба
     soundAnimator.setAnimation(AnimationType::StarrySky, CRGB::Green); // Установка начальной анимации
 
+
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
 }
 
 void loop() {
+
     // Проверяем, прошло ли 1 минута
     unsigned long currentTime = millis();
     if (currentTime - lastAnimationChangeTime >= animationInterval) {
         lastAnimationChangeTime = currentTime;
+
 
         // Генерируем случайный цвет из массива
         CRGB randomColor = availableColors[random(0, numColors)];
@@ -85,3 +89,4 @@ void loop() {
 
     delay(1000); // Задержка в 1 секунду для предотвращения перегрузки
 }
+

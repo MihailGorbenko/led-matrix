@@ -4,6 +4,7 @@
 #include <cfloat>
 #include "config.hpp" // Подключаем файл конфигурации
 
+
 // --- Дефолтные значения настроек ---
 constexpr float DEFAULT_SENSITIVITY_REDUCTION = 5.0f;
 constexpr float DEFAULT_LOW_FREQ_GAIN = 1.0f;
@@ -15,6 +16,7 @@ constexpr float DEFAULT_FMAX = 10000.0f;
 constexpr float DEFAULT_NOISE_THRESHOLD_RATIO = 0.25f;
 constexpr float DEFAULT_BAND_DECAY = 0.8f; // Увеличьте значение для более медленного затухания
 constexpr int   DEFAULT_BAND_CEILING = 1000;
+
 
 class AudioAnalyzer {
 private:
@@ -43,7 +45,9 @@ private:
     void calculateBands();
     void smoothBands();
     void normalizeBands(uint16_t* heights, int matrixHeight);
+
     void updateSignalStats(float currentLogPower);
+
 
 public:
     AudioAnalyzer();
@@ -51,6 +55,7 @@ public:
 
     void begin();
     void processAudio();
+
     void getNormalizedHeights(uint16_t* heights, int matrixHeight);
 
 

@@ -40,6 +40,7 @@ void AudioAnalyzer::begin() {
 }
 
 void AudioAnalyzer::loadSettings() {
+
     if (!preferences.isKey("sensReduct")) {
         Serial.println("[AudioAnalyzer] Key 'sensReduct' not found. Using default value.");
         sensitivityReduction = DEFAULT_SENSITIVITY_REDUCTION;
@@ -180,10 +181,12 @@ void AudioAnalyzer::saveSetting(const char* key, float value) {
         Serial.println("[AudioAnalyzer] Failed to open preferences for saving.");
         return;
     }
+
     preferences.putFloat(key, value);
     Serial.printf("[AudioAnalyzer] Saved %s: %.2f\n", key, value);
     preferences.end();
 }
+
 
 void AudioAnalyzer::saveSetting(const char* key, int value) {
     if (!preferences.begin("audioanalyzer", false)) {
@@ -235,6 +238,7 @@ void AudioAnalyzer::setFMin(float value) {
         fMin = value;
         saveSetting("fMin", value);
     }
+
 }
 
 void AudioAnalyzer::setFMax(float value) {
@@ -242,6 +246,7 @@ void AudioAnalyzer::setFMax(float value) {
         fMax = value;
         saveSetting("fMax", value);
     }
+
 }
 
 void AudioAnalyzer::setNoiseThresholdRatio(float value) {
@@ -256,6 +261,7 @@ void AudioAnalyzer::setBandDecay(float value) {
         bandDecay = value;
         saveSetting("bDecay", value);
     }
+
 }
 
 void AudioAnalyzer::setBandCeiling(int value) {
@@ -289,10 +295,12 @@ void AudioAnalyzer::processAudio() {
 }
 
 void AudioAnalyzer::calculateBands() {
+
     if (fMin <= 0 || fMax <= 0) {
         Serial.println("[AudioAnalyzer] Invalid frequency range.");
         return;
     }
+
 
     const double freqPerBin = (double)SAMPLING_FREQUENCY / SAMPLES;
     const int totalBins = SAMPLES / 2;
@@ -304,11 +312,13 @@ void AudioAnalyzer::calculateBands() {
     float rms = sqrt(rmsSum / totalBins);
     float threshold = rms * noiseThresholdRatio;
 
+
     maxAmplitude = 0;
 
+
     for (int b = 0; b < MATRIX_WIDTH; b++) {
-        double fromFreq = fMin * pow(fMax / fMin, (double)b / MATRIX_WIDTH);
-        double toFreq = fMin * pow(fMax / fMin, (double)(b + 1) / MATRIX_WIDTH);
+        double fromFreq = DEFAULT_FMIN * pow(DEFAULT_FMAX / DEFAULT_FMIN, (double)b / MATRIX_WIDTH);
+        double toFreq = DEFAULT_FMIN * pow(DEFAULT_FMAX / DEFAULT_FMIN, (double)(b + 1) / MATRIX_WIDTH);
 
         int fromBin = (int)(fromFreq / freqPerBin);
         int toBin = (int)(toFreq / freqPerBin);
@@ -343,6 +353,7 @@ void AudioAnalyzer::smoothBands() {
     for (int i = 0; i < MATRIX_WIDTH; i++) {
         smoothedBands[i] = (1.0f - alpha) * smoothedBands[i] + alpha * bands[i];
     }
+
 }
 
 void AudioAnalyzer::normalizeBands(uint16_t* heights, int matrixHeight) {
