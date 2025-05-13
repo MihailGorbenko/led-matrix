@@ -4,7 +4,10 @@
 #include <Arduino.h>
 
 AudioAnalyzer::AudioAnalyzer()
-    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY) { // Инициализация FFT
+    : FFT(vReal, vImag, SAMPLES, SAMPLING_FREQUENCY),
+      minLogPower(FLT_MAX),
+      maxLogPower(FLT_MIN),
+      sampleCount(0) { // Инициализация FFT
     // Инициализация массивов частотных полос
     memset(bands, 0, sizeof(bands));
     memset(smoothedBands, 0, sizeof(smoothedBands));
@@ -129,6 +132,18 @@ void AudioAnalyzer::loadSettings() {
     preferences.end();
 }
 
+void AudioAnalyzer::updateSignalStats(float currentLogPower) {
+    // Обновляем минимальное значение
+    minLogPower = fminf(minLogPower, currentLogPower);
+
+    // Добавляем затухание для максимального значения
+    const float decayFactor = 0.90f; // Коэффициент затухания (0.0 - 1.0)
+    maxLogPower = fmaxf(maxLogPower * decayFactor, currentLogPower);
+
+    // Увеличиваем счётчик выборок
+    sampleCount++;
+}
+
 float AudioAnalyzer::getTotalLogRmsEnergy() {
     float rmsSum = 0.0f;
 
@@ -143,6 +158,9 @@ float AudioAnalyzer::getTotalLogRmsEnergy() {
 
     // Ограничиваем значение
     logEnergy = constrain(logEnergy, 0.0f, (float)bandCeiling);
+
+    // Обновляем статистику сигнала
+    updateSignalStats(logEnergy);
 
     return logEnergy;
 }

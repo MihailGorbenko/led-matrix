@@ -15,6 +15,12 @@ unsigned long lastAnimationChangeTime = 0; // Время последнего п
 const unsigned long animationInterval = 60 * 1000; // Интервал в 1 минуту
 int currentAnimationIndex = 0; // Индекс текущей анимации
 
+// Массив доступных цветов
+const CRGB availableColors[] = {
+    CRGB::Red, CRGB::Green, CRGB::Blue, CRGB::Yellow, CRGB::Cyan, CRGB::Magenta, CRGB::Orange, CRGB::Purple, CRGB::White
+};
+const int numColors = sizeof(availableColors) / sizeof(availableColors[0]); // Количество доступных цветов
+
 void setup() {
     Serial.begin(115200);
 
@@ -33,8 +39,13 @@ void setup() {
     ledMatrix.setBrightness(BRIGHTNESS);
    
     // Запускаем анимацию
+    soundAnimator.init(); // Инициализация SoundAnimator
     soundAnimator.initializeAudioAnalyzer(); // Инициализация AudioAnalyzer
-    soundAnimator.setPulsingRectangleAnimation(CRGB::Green); // Установка начальной анимации
+    soundAnimator.setPulsingRectangleSensitivity(0.9f);
+    soundAnimator.setWaveSensitivity(1.0f); // Установка чувствительности
+    soundAnimator.setStarrySkyMaxStars(50); // Максимальное количество звёзд
+    soundAnimator.setStarrySkySensitivity(0.8f); // Чувствительность звёздного неба
+    soundAnimator.setAnimation(AnimationType::StarrySky, CRGB::Green); // Установка начальной анимации
 
     // Запускаем задачу для анимации
     currentMatrixTask->startTask();
@@ -46,24 +57,27 @@ void loop() {
     if (currentTime - lastAnimationChangeTime >= animationInterval) {
         lastAnimationChangeTime = currentTime;
 
+        // Генерируем случайный цвет из массива
+        CRGB randomColor = availableColors[random(0, numColors)];
+
         // Переключаем анимацию
         currentAnimationIndex = (currentAnimationIndex + 1) % 4; // Переключаем между 4 анимациями
 
         switch (currentAnimationIndex) {
             case 0:
-                soundAnimator.setStarrySkyAnimation(CRGB::Green); // Звёздное небо
+                soundAnimator.setAnimation(AnimationType::StarrySky, randomColor); // Звёздное небо
                 Serial.println("Switched to Starry Sky Animation");
                 break;
             case 1:
-                soundAnimator.setPulsingRectangleAnimation(CRGB::Green); // Пульсирующий прямоугольник
+                soundAnimator.setAnimation(AnimationType::PulsingRectangle, randomColor); // Пульсирующий прямоугольник
                 Serial.println("Switched to Pulsing Rectangle Animation");
                 break;
             case 2:
-                soundAnimator.setGreenAmplitudeAnimation(); // Зелёная амплитуда
-                Serial.println("Switched to Green Amplitude Animation");
+                soundAnimator.setAnimation(AnimationType::ColorAmplitude, randomColor); // Амплитуда цвета
+                Serial.println("Switched to Color Amplitude Animation");
                 break;
             case 3:
-                soundAnimator.setWaveAnimation(CRGB::Green); // Волна
+                soundAnimator.setAnimation(AnimationType::Wave, randomColor); // Волна
                 Serial.println("Switched to Wave Animation");
                 break;
         }

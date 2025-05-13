@@ -1,6 +1,7 @@
 #pragma once
 #include <Preferences.h>
 #include <arduinoFFT.h> // Ensure the arduinoFFT library is installed
+#include <cfloat>
 #include "config.hpp" // Подключаем файл конфигурации
 
 // --- Дефолтные значения настроек ---
@@ -34,9 +35,15 @@ private:
     float maxAmplitude;
     float logPowerSmoothed;
 
+    // Переменные для статистики сигнала
+    float minLogPower;
+    float maxLogPower;
+    int sampleCount;
+
     void calculateBands();
     void smoothBands();
     void normalizeBands(uint16_t* heights, int matrixHeight);
+    void updateSignalStats(float currentLogPower);
 
 public:
     AudioAnalyzer();
@@ -45,7 +52,7 @@ public:
     void begin();
     void processAudio();
     void getNormalizedHeights(uint16_t* heights, int matrixHeight);
-    float getTotalLogRmsEnergy();
+
 
     // Методы для настройки параметров
     void setSensitivityReduction(float value);
@@ -63,4 +70,9 @@ public:
     void resetSettings();
     void saveSetting(const char* key, float value);
     void saveSetting(const char* key, int value);
+
+    // Методы для получения статистики
+    float getMinLogPower() const { return minLogPower; }
+    float getMaxLogPower() const { return maxLogPower; }
+    float getTotalLogRmsEnergy();
 };
