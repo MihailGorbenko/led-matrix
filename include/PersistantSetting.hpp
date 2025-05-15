@@ -42,20 +42,28 @@ struct PersistantSetting : public SerializableSetting<T> {
         Preferences prefs;
         if (!prefs.begin(nvsNamespace, true)) return false;
         bool found = false;
-        if constexpr (std::is_same<T, int>::value) {
-            int v = prefs.getInt(trimmedName, this->defaultValue);
-            if (this->value) *this->value = v;
-            found = true;
-        } else if constexpr (std::is_same<T, float>::value) {
-            float v = prefs.getFloat(trimmedName, this->defaultValue);
-            if (this->value) *this->value = v;
-            found = true;
-        } else if constexpr (std::is_same<T, bool>::value) {
-            bool v = prefs.getBool(trimmedName, this->defaultValue);
-            if (this->value) *this->value = v;
-            found = true;
+        if (prefs.isKey(trimmedName)) {
+            if constexpr (std::is_same<T, int>::value) {
+                int v = prefs.getInt(trimmedName, this->defaultValue);
+                if (this->value) *this->value = v;
+                found = true;
+            } else if constexpr (std::is_same<T, float>::value) {
+                float v = prefs.getFloat(trimmedName, this->defaultValue);
+                if (this->value) *this->value = v;
+                found = true;
+            } else if constexpr (std::is_same<T, bool>::value) {
+                bool v = prefs.getBool(trimmedName, this->defaultValue);
+                if (this->value) *this->value = v;
+                found = true;
+            }
         }
         prefs.end();
         return found;
+    }
+
+    // Сбросить значение к умолчанию и сохранить в NVS
+    bool resetToDefaultAndSave() {
+        this->reset();         // сбросить к defaultValue
+        return saveToNVS();    // сохранить в NVS
     }
 };
