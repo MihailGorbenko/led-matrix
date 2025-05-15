@@ -20,7 +20,6 @@ struct SerializableSetting : public Setting<T> {
     void toJSON(JsonObject& obj) const {
         obj["name"] = name;
         obj["label"] = label;
-        obj["type"] = settingTypeToString(type);
         obj["value"] = value ? *value : defaultValue;
         obj["default"] = defaultValue;
         obj["min"] = (type != SettingType::BOOL) ? minValue : 0;
@@ -31,7 +30,16 @@ struct SerializableSetting : public Setting<T> {
     // Десериализация из JSON: обновляет все поля
     void fromJSON(const JsonObject& obj) {
         // name, label и type не меняем!
-        if (value && obj.containsKey("value"))   *value = obj["value"].as<T>();
+        if (value && obj.containsKey("value")) {
+            T v = obj["value"].as<T>();
+            if (type == SettingType::BOOL || (v >= minValue && v <= maxValue)) {
+                *value = v;
+            } else if (v < minValue) {
+                *value = minValue;
+            } else if (v > maxValue) {
+                *value = maxValue;
+            }
+        }
         if (obj.containsKey("default")) defaultValue = obj["default"].as<T>();
         if (type != SettingType::BOOL) {
             if (obj.containsKey("min"))  minValue = obj["min"].as<T>();
