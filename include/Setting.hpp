@@ -36,24 +36,22 @@ struct Setting {
         "Setting<T>: T должен быть bool, int или float"
     );
 
-    const char* name;      // Ключ настройки
-    const char* label;     // Отображаемое имя
-    SettingType type;      // Тип значения (вычисляется автоматически)
-    T* value;              // Указатель на данные нужного типа
-    T defaultValue = T();  // Значение по умолчанию
-    T minValue = T();      // Минимум (для числовых)
-    T maxValue = T();      // Максимум (для числовых)
-    T step = T();          // Шаг (для числовых)
+    const char* const name;   // Ключ настройки
+    const char* const label;  // Отображаемое имя
+    SettingType type;         // Тип значения (вычисляется автоматически)
+    T* value;                 // Указатель на данные нужного типа
+    const T defaultValue;     // Значение по умолчанию (const)
+    const T minValue;         // Минимум (const)
+    const T maxValue;         // Максимум (const)
+    const T step;             // Шаг (const)
 
-    // Вспомогательная функция для вычисления SettingType по T
     static constexpr SettingType deduceType() {
         return std::is_same<T, bool>::value  ? SettingType::BOOL  :
                std::is_same<T, int>::value   ? SettingType::INT   :
                std::is_same<T, float>::value ? SettingType::FLOAT :
-                                               SettingType::INT; // fallback
+                                               SettingType::INT;
     }
 
-    // Универсальный конструктор
     Setting(const char* name,
             const char* label,
             T* value,
@@ -64,15 +62,14 @@ struct Setting {
         : name(name), label(label), type(deduceType()), value(value),
           defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), step(step)
     {
-        // Для BOOL диапазон и шаг не нужны, сбрасываем
         if (type == SettingType::BOOL) {
-            this->minValue = T();
-            this->maxValue = T();
-            this->step = T();
+            // Для BOOL диапазон и шаг не нужны, сбрасываем
+            const_cast<T&>(this->minValue) = T();
+            const_cast<T&>(this->maxValue) = T();
+            const_cast<T&>(this->step) = T();
         }
     }
 
-    // Сброс значения к значению по умолчанию
     void reset() {
         if (value) {
             *value = defaultValue;
