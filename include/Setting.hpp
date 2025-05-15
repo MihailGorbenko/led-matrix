@@ -38,23 +38,30 @@ struct Setting {
 
     const char* name;      // Ключ настройки
     const char* label;     // Отображаемое имя
-    SettingType type;      // Тип значения
+    SettingType type;      // Тип значения (вычисляется автоматически)
     T* value;              // Указатель на данные нужного типа
-    const T defaultValue = T(); // Значение по умолчанию
+    T defaultValue = T();  // Значение по умолчанию
     T minValue = T();      // Минимум (для числовых)
     T maxValue = T();      // Максимум (для числовых)
-    T step = T();         // Шаг (для числовых)
+    T step = T();          // Шаг (для числовых)
+
+    // Вспомогательная функция для вычисления SettingType по T
+    static constexpr SettingType deduceType() {
+        return std::is_same<T, bool>::value  ? SettingType::BOOL  :
+               std::is_same<T, int>::value   ? SettingType::INT   :
+               std::is_same<T, float>::value ? SettingType::FLOAT :
+                                               SettingType::INT; // fallback
+    }
 
     // Универсальный конструктор
     Setting(const char* name,
             const char* label,
-            SettingType type,
             T* value,
             T minValue = T(),
             T maxValue = T(),
             T step = T(),
             T defaultValue = T())
-        : name(name), label(label), type(type), value(value),
+        : name(name), label(label), type(deduceType()), value(value),
           defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), step(step)
     {
         // Для BOOL диапазон и шаг не нужны, сбрасываем
@@ -64,6 +71,21 @@ struct Setting {
             this->step = T();
         }
     }
+
+    // Сброс значения к значению по умолчанию
+    void reset() {
+        if (value) {
+            *value = defaultValue;
+        }
+    }
+
+    bool setValue(T newValue) {
+        if (type != SettingType::BOOL && (newValue < minValue || newValue > maxValue)) return false;
+        if (value) *value = newValue;
+        return true;
+    }
+
+    T getValue() const { return value ? *value : defaultValue; }
 };
 
 
