@@ -18,6 +18,10 @@ public:
     // Загрузка настроек из JSON
     virtual bool fromJSON(const JsonObject& json) = 0;
 
+    // Получение JSON-схемы для всех настроек
+    virtual void getJsonSchema(JsonObject& json) const = 0;
+
     // Виртуальный деструктор
     virtual ~IConfigurable() = default;
 };
+

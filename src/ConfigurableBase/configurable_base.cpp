@@ -1,62 +1,59 @@
-#include "IConfigurable.hpp"
-#include "SerializableSetting.hpp"
-#include <vector>
+#include "configurable_base.hpp"
 
-class ConfigurableBase : public IConfigurable {
-protected:
-    std::vector<SerializableSettingBase*> settings;
+ConfigurableBase::ConfigurableBase(const char* name, const char* label)
+    : moduleName(name), moduleLabel(label) {}
 
-public:
-    void registerSetting(SerializableSettingBase* setting) {
-        settings.push_back(setting);
+void ConfigurableBase::registerSetting(ISetting* setting) {
+    settings.push_back(setting);
+}
+
+bool ConfigurableBase::loadConfig() {
+    bool success = true;
+    for (auto* s : settings) {
+        success &= s->loadFromNVS();
     }
+    return success;
+}
 
-    bool loadConfig() override {
-        bool success = true;
-        for (auto* s : settings) {
-            if (auto* ps = dynamic_cast<PersistantSettingBase*>(s)) {
-                success &= ps->loadFromNVS();
-            }
+bool ConfigurableBase::saveConfig() const {
+    bool success = true;
+    for (auto* s : settings) {
+        success &= s->saveToNVS();
+    }
+    return success;
+}
+
+bool ConfigurableBase::resetConfig() {
+    bool success = true;
+    for (auto* s : settings) {
+        success &= s->resetToDefaultAndSave();
+    }
+    return success;
+}
+
+void ConfigurableBase::toJSON(JsonObject& obj) const {
+    for (auto* s : settings) {
+        JsonObject settingObj = obj[s->getName()].to<JsonObject>();
+        s->toJSON(settingObj);
+    }
+}
+
+bool ConfigurableBase::fromJSON(const JsonObject& obj) {
+    bool success = true;
+    for (auto* s : settings) {
+        if (obj[s->getName()].is<JsonObject>()) {
+            success &= s->fromJSON(obj[s->getName()]);
         }
-        return success;
     }
+    return success;
+}
 
-    bool saveConfig() const override {
-        bool success = true;
-        for (auto* s : settings) {
-            if (auto* ps = dynamic_cast<const PersistantSettingBase*>(s)) {
-                success &= ps->saveToNVS();
-            }
-        }
-        return success;
+void ConfigurableBase::getJsonSchema(JsonObject& obj) const {
+    obj["moduleName"] = moduleName;
+    obj["moduleLabel"] = moduleLabel;
+    JsonArray arr = obj["settings"].to<JsonArray>();
+    for (auto* s : settings) {
+        JsonObject schemaObj = arr.add<JsonObject>();
+        s->getJsonSchema(schemaObj);
     }
-
-    bool resetConfig() override {
-        bool success = true;
-        for (auto* s : settings) {
-            if (auto* ps = dynamic_cast<PersistantSettingBase*>(s)) {
-                success &= ps->resetToDefaultAndSave();
-            }
-        }
-        return success;
-    }
-
-    DynamicJsonDocument toJSON() const override {
-        DynamicJsonDocument doc(1024);
-        JsonObject obj = doc.to<JsonObject>();
-        for (auto* s : settings) {
-            obj[s->name] = s->toJsonValue();
-        }
-        return doc;
-    }
-
-    bool fromJSON(const JsonObject& json) override {
-        bool success = true;
-        for (auto* s : settings) {
-            if (json.containsKey(s->name)) {
-                success &= s->fromJsonValue(json[s->name]);
-            }
-        }
-        return success;
-    }
-};
+}

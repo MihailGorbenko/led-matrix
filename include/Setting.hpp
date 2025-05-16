@@ -52,8 +52,8 @@ struct Setting {
                                                SettingType::INT;
     }
 
-    Setting(const char* name,
-            const char* label,
+    Setting(const char* const name,
+            const char* const label,
             T* value,
             T minValue = T(),
             T maxValue = T(),
@@ -70,6 +70,8 @@ struct Setting {
         }
     }
 
+    
+
     void reset() {
         if (value) {
             *value = defaultValue;
@@ -84,5 +86,6 @@ struct Setting {
 
     T getValue() const { return value ? *value : defaultValue; }
 };
+
 
 

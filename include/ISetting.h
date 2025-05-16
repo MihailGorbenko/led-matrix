@@ -2,7 +2,7 @@
 #include <ArduinoJson.h>
 
 struct ISetting {
-    const char* name;
+    virtual const char* getName() const = 0;
 
     virtual JsonVariant toJsonValue() const = 0;
     virtual bool fromJsonValue(JsonVariant val) = 0;
@@ -14,5 +14,8 @@ struct ISetting {
     virtual bool loadFromNVS() = 0;
     virtual bool resetToDefaultAndSave() = 0;
 
+    virtual void getJsonSchema(JsonObject& obj) const = 0;
+
     virtual ~ISetting() = default;
 };
+

@@ -30,7 +30,7 @@ struct SerializableSetting : public Setting<T> {
     // Десериализация из JSON: обновляет все поля
     void fromJSON(const JsonObject& obj) {
         // name, label и type не меняем!
-        if (value && obj.containsKey("value")) {
+        if (value && obj["value"].is<T>()) {
             T v = obj["value"].as<T>();
             if (type == SettingType::BOOL || (v >= minValue && v <= maxValue)) {
                 *value = v;
@@ -40,12 +40,39 @@ struct SerializableSetting : public Setting<T> {
                 *value = maxValue;
             }
         }
-        if (obj.containsKey("default")) defaultValue = obj["default"].as<T>();
+    }
+
+    JsonVariant toJsonValue() const {
+        DynamicJsonDocument doc(32);
+        doc.set(value ? *value : defaultValue);
+        return doc.as<JsonVariant>();
+    }
+
+    bool fromJsonValue(JsonVariant val) {
+        if (!value) return false;
+        T v = val.as<T>();
+        if (type == SettingType::BOOL || (v >= minValue && v <= maxValue)) {
+            *value = v;
+        } else if (v < minValue) {
+            *value = minValue;
+        } else if (v > maxValue) {
+            *value = maxValue;
+        }
+        return true;
+    }
+
+    void getJsonSchema(JsonObject& obj) const {
+        obj["name"] = name;
+        obj["label"] = label;
+        obj["type"] = settingTypeToString(type);
+        obj["default"] = defaultValue;
+        obj["value"] = value ? *value : defaultValue; // ← добавлено
         if (type != SettingType::BOOL) {
-            if (obj.containsKey("min"))  minValue = obj["min"].as<T>();
-            if (obj.containsKey("max"))  maxValue = obj["max"].as<T>();
-            if (obj.containsKey("step")) step = obj["step"].as<T>();
+            obj["min"] = minValue;
+            obj["max"] = maxValue;
+            obj["step"] = step;
         }
     }
 };
+
 
