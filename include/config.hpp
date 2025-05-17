@@ -8,9 +8,6 @@
 
 #define UPDATE_INTERVAL (1000 / 50) // 50 FPS
 
-// Настройки аудиоанализатора
-#define SAMPLES 128 // Количество отсчетов для FFT 
-#define SAMPLING_FREQUENCY 8000   // Частота дискретизации
 
 
 #endif // CONFIG_H

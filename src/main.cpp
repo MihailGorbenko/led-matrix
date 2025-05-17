@@ -2,70 +2,82 @@
 #include <ArduinoJson.h>
 #include "config.hpp"
 #include <nvs_flash.h>
-#include "LedMatrix/led_matrix.hpp"
+#include "AudioAnalyzer/audio_analyzer.hpp"
 
-LedMatrix* matrix = nullptr;
+AudioAnalyzer* analyzer = nullptr;
 
-unsigned long lastChange = 0;
-bool isMax = false;
+unsigned long lastSettingsChange = 0;
+unsigned long lastVisualization = 0;
+bool toggle = false;
 
 void setup() {
     Serial.begin(115200);
-    delay(1000);
-
-    matrix = new LedMatrix();
-    matrix->begin();
-      for (int x = 0; x < matrix->getWidth(); ++x) {
-                for (int y = 0; y < matrix->getHeight(); ++y) {
-                    matrix->setPixel(x, y, CRGB::White);
-                }
-            }
-    matrix->update();
-
+    // Инициализация NVS
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
     
+    pinMode(MIC_PIN, INPUT);
+    analogReadResolution(12); 
+    analogSetAttenuation(ADC_11db);
+
+    analyzer = new AudioAnalyzer();
+    analyzer->begin();
+
+    Serial.println("AudioAnalyzer инициализирован.");
 }
 
 void loop() {
-   
     unsigned long now = millis();
-    if (now - lastChange > 10000) { // каждые 30 секунд
-        lastChange = now;
 
-        if (!isMax) {
-            // Установить яркость 255 через JSON
-            DynamicJsonDocument doc(64);
-            JsonObject obj = doc.to<JsonObject>();
-            obj["brightness"]["value"] = 200;
-            matrix->fromJSON(obj);
-            // Зажечь все пиксели белым
-            for (int x = 0; x < matrix->getWidth(); ++x) {
-                for (int y = 0; y < matrix->getHeight(); ++y) {
-                    matrix->setPixel(x, y, CRGB::White);
-                }
-            }
-            
-            Serial.println("Яркость установлена на 255");
+    // --- Меняем настройки через JSON каждые 10 секунд ---
+    static unsigned long lastJsonChange = 0;
+    static bool customSettings = false;
+    if (now - lastJsonChange > 10000) {
+        lastJsonChange = now;
+        if (!customSettings) {
+            // Применяем пользовательские настройки через JSON
+            StaticJsonDocument<256> doc;
+            doc["sensitivityReduction"]["value"] = 8;
+            doc["alpha"]["value"] = 0.7;
+            doc["lowFreqGain"]["value"] = 2;
+            doc["midFreqGain"]["value"] = 1.5;
+            doc["highFreqGain"]["value"] = 3;
+            doc["fMin"]["value"] = 100;
+            doc["fMax"]["value"] = 8000;
+            doc["noiseThresholdRatio"]["value"] = 0.4;
+            doc["bandDecay"]["value"] = 0.9;
+            doc["bandCeiling"]["value"] = 500;
+            analyzer->fromJSON(doc.as<JsonObject>());
+            Serial.println(">>> Применены пользовательские настройки через JSON");
         } else {
-            // Сбросить к значениям по умолчанию
-            matrix->resetConfig();
-            // Зажечь все пиксели белым
-            for (int x = 0; x < matrix->getWidth(); ++x) {
-                for (int y = 0; y < matrix->getHeight(); ++y) {
-                    matrix->setPixel(x, y, CRGB::White);
-                }
-            }
-            
-            Serial.println("Яркость сброшена к default");
+            // Сброс до заводских настроек
+            analyzer->resetConfig();
+            Serial.println(">>> Сброс до заводских настроек");
         }
-        isMax = !isMax;
 
-        // Вывести схему LedMatrix
-        DynamicJsonDocument doc(128);
-        JsonObject schema = doc.to<JsonObject>();
-        matrix->getJsonSchema(schema);
-        Serial.println("=== JSON Schema ===");
-        serializeJsonPretty(doc, Serial);
+        customSettings = !customSettings;
+    }
+
+    // --- Визуализируем спектр ---
+    if (now - lastVisualization > 100) {
+        lastVisualization = now;
+        analyzer->processAudio();
+        static uint16_t heights[MATRIX_WIDTH];
+        analyzer->getNormalizedHeights(heights, MATRIX_HEIGHT);
+
+        Serial.print("\033[2J\033[H");
+        for (int row = MATRIX_HEIGHT - 1; row >= 0; --row) {
+            for (int col = 0; col < MATRIX_WIDTH; ++col) {
+                if (heights[col] > row) Serial.print("# ");
+                else Serial.print("  ");
+            }
+            Serial.println();
+        }
         Serial.println();
     }
+    delay(10);
 }
 

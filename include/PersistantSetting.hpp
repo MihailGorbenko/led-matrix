@@ -34,7 +34,8 @@ struct PersistantSetting : public SerializableSetting<T>, public ISetting {
     )
         : SerializableSetting<T>(name, label, value, minValue, maxValue, step, defaultValue)
         , nvsNamespace(ns)
-    {}
+    {
+    }
 
     static void trimName(char* dst, const char* src) {
         if (!src) { dst[0] = '\0'; return; }
@@ -78,15 +79,16 @@ struct PersistantSetting : public SerializableSetting<T>, public ISetting {
             Serial.println("FAILED: prefs.begin()");
             return false;
         }
-        if constexpr (std::is_same<T, int>::value) {
+        // gnu++11: заменяем if constexpr на обычные if + is_same
+        if (std::is_same<T, int>::value) {
             int v = this->value ? *this->value : this->defaultValue;
             Serial.println(v);
             ok = prefs.putInt(trimmedName, v);
-        } else if constexpr (std::is_same<T, float>::value) {
+        } else if (std::is_same<T, float>::value) {
             float v = this->value ? *this->value : this->defaultValue;
             Serial.println(v);
             ok = prefs.putFloat(trimmedName, v);
-        } else if constexpr (std::is_same<T, bool>::value) {
+        } else if (std::is_same<T, bool>::value) {
             bool v = this->value ? *this->value : this->defaultValue;
             Serial.println(v);
             ok = prefs.putBool(trimmedName, v);
@@ -101,30 +103,40 @@ struct PersistantSetting : public SerializableSetting<T>, public ISetting {
         trimName(trimmedName, this->name);
         Preferences prefs;
         Serial.printf("[NVS] loadFromNVS: ns='%s', key='%s' ... ", nvsNamespace, trimmedName);
-        if (!prefs.begin(nvsNamespace, true)) {
+        if (!prefs.begin(nvsNamespace, false)) { // false — режим записи, чтобы можно было сохранить
             Serial.println("FAILED: prefs.begin()");
             return false;
         }
         bool found = false;
         if (prefs.isKey(trimmedName)) {
-            if constexpr (std::is_same<T, int>::value) {
+            if (std::is_same<T, int>::value) {
                 int v = prefs.getInt(trimmedName, this->defaultValue);
                 if (this->value) *this->value = v;
                 Serial.printf("found int: %d\n", v);
                 found = true;
-            } else if constexpr (std::is_same<T, float>::value) {
+            } else if (std::is_same<T, float>::value) {
                 float v = prefs.getFloat(trimmedName, this->defaultValue);
                 if (this->value) *this->value = v;
                 Serial.printf("found float: %f\n", v);
                 found = true;
-            } else if constexpr (std::is_same<T, bool>::value) {
+            } else if (std::is_same<T, bool>::value) {
                 bool v = prefs.getBool(trimmedName, this->defaultValue);
                 if (this->value) *this->value = v;
                 Serial.printf("found bool: %s\n", v ? "true" : "false");
                 found = true;
             }
         } else {
-            Serial.println("not found");
+            // Нет значения — присваиваем defaultValue и сохраняем в NVS
+            if (this->value) *this->value = this->defaultValue;
+            Serial.println("not found, set to default and save");
+            // Сохраняем дефолтное значение
+            if (std::is_same<T, int>::value) {
+                prefs.putInt(trimmedName, this->defaultValue);
+            } else if (std::is_same<T, float>::value) {
+                prefs.putFloat(trimmedName, this->defaultValue);
+            } else if (std::is_same<T, bool>::value) {
+                prefs.putBool(trimmedName, this->defaultValue);
+            }
         }
         prefs.end();
         return found;
