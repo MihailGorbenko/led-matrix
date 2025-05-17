@@ -53,7 +53,7 @@ void ConfigurableBase::getJsonSchema(JsonObject& obj) const {
     obj["moduleLabel"] = moduleLabel;
     JsonArray arr = obj["settings"].to<JsonArray>();
     for (auto* s : settings) {
-        JsonObject schemaObj = arr.add<JsonObject>();
+        JsonObject schemaObj = arr.createNestedObject();
         s->getJsonSchema(schemaObj);
     }
 }
