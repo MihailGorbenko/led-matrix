@@ -5,8 +5,6 @@
 #include <Arduino.h>
 #include <cmath>
 
-
-
 class ColorAmplitudeAnimation : public Animation {
     int colorValue;
     PersistantSetting<int> colorSetting;
@@ -18,30 +16,42 @@ public:
           colorSetting("color", "Цвет", &colorValue, "color_amp", 0, 0, 0xFFFFFF, 1)
     {
         registerSetting(&colorSetting);
+        loadConfig(); // Загружаем настройки из NVS при инициализации
     }
 
     AnimationType getType() const override { return AnimationType::ColorAmplitude; }
     bool needsAudio() const override { return true; }
 
     void render(LedMatrix& matrix, AudioAnalyzer* audio) override {
-        if (!audio) return;
+        if (!audio) {
+            Serial.println("[ColorAmplitude] audio is nullptr!");
+            return;
+        }
         audio->processAudio();
-        uint16_t heights[MATRIX_WIDTH];
-        audio->getNormalizedHeights(heights, MATRIX_WIDTH);
+
+        int width = matrix.getWidth();
+        int height = matrix.getHeight();
+
+        uint16_t heights[MATRIX_WIDTH] = {0};
+        audio->getNormalizedHeights(heights, width);
 
         CRGB* leds = matrix.getLeds();
-        fill_solid(leds, MATRIX_WIDTH * MATRIX_HEIGHT, CRGB::Black);
+        if (!leds) {
+            Serial.println("[ColorAmplitude] leds is nullptr!");
+            return;
+        }
+        fill_solid(leds, width * height, CRGB::Black);
 
         CRGB color = CRGB(colorValue);
 
-        for (int x = 0; x < MATRIX_WIDTH; x++) {
-            for (int y = MATRIX_HEIGHT - heights[x]; y < MATRIX_HEIGHT; y++) {
+        for (int x = 0; x < width; x++) {
+            for (int y = height - heights[x]; y < height; y++) {
+                int idx = matrix.XY(x, y);
                 if (colorValue == 0) {
-                    // Динамический цвет: по высоте столбца
-                    uint8_t hue = map(heights[x], 0, MATRIX_HEIGHT, 0, 255);
-                    leds[matrix.XY(x, y)] = CHSV(hue, 255, 255);
+                    uint8_t hue = map(heights[x], 0, height, 0, 255);
+                    leds[idx] = CHSV(hue, 255, 255);
                 } else {
-                    leds[matrix.XY(x, y)] = color;
+                    leds[idx] = color;
                 }
             }
         }

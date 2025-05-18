@@ -11,14 +11,19 @@ Animator::Animator(LedMatrix* m, AudioAnalyzer* a)
       currentAnimTypeSetting("currentAnimationType", "Тип текущей анимации", reinterpret_cast<int*>(&currentAnimType), "animator", static_cast<int>(AnimationType::ColorAmplitude))
 {
     registerSetting(&currentAnimTypeSetting);
+    Serial.println("[Animator] Конструктор вызван");
 }
 
 Animator::~Animator() {
     if (animTask) vTaskDelete(animTask);
     for (auto* anim : animations) delete anim;
+    Serial.println("[Animator] Деструктор вызван");
 }
 
-void Animator::addAnimation(Animation* anim) { animations.push_back(anim); }
+void Animator::addAnimation(Animation* anim) {
+    animations.push_back(anim);
+    Serial.printf("[Animator] Добавлена анимация: %s\n", anim->getModuleName());
+}
 
 bool Animator::startAnimation(AnimationType type) {
     for (auto* anim : animations) {
@@ -26,14 +31,17 @@ bool Animator::startAnimation(AnimationType type) {
             current = anim;
             currentAnimType = type;
             saveConfig();
+            Serial.printf("[Animator] Запущена анимация: %s\n", anim->getModuleName());
             return true;
         }
     }
+    Serial.println("[Animator] Не удалось найти анимацию по типу!");
     return false;
 }
 
 void Animator::animTaskFunc(void* param) {
     Animator* self = static_cast<Animator*>(param);
+    Serial.println("[Animator] Задача анимации запущена");
     while (true) {
         if (self->current) {
             self->current->render(*self->matrix, self->current->needsAudio() ? self->audio : nullptr);
@@ -43,8 +51,10 @@ void Animator::animTaskFunc(void* param) {
 }
 
 void Animator::begin() {
+    Serial.println("[Animator] begin()");
     startAnimation(currentAnimType);
     xTaskCreatePinnedToCore(animTaskFunc, "AnimTask", 4096, this, 1, &animTask, 1);
+    Serial.println("[Animator] Анимация и задача запущены");
 }
 
 void Animator::getJsonSchema(JsonObject& obj) const {
@@ -56,11 +66,13 @@ void Animator::getJsonSchema(JsonObject& obj) const {
         anim->getJsonSchema(animObj);
     }
     obj["currentAnimationType"] = animationTypeToString(currentAnimType);
+    Serial.println("[Animator] Схема JSON сформирована");
 }
 
 bool Animator::fromJSON(const JsonObject& obj) {
     if (obj.containsKey("currentAnimationType")) {
         AnimationType type = animationTypeFromString(obj["currentAnimationType"]);
+        Serial.printf("[Animator] fromJSON: выбор анимации %s\n", animationTypeToString(type));
         startAnimation(type);
     }
     return true;

@@ -37,8 +37,9 @@ AudioAnalyzer::AudioAnalyzer()
 AudioAnalyzer::~AudioAnalyzer() {}
 
 void AudioAnalyzer::begin() {
+    Serial.println("[AudioAnalyzer] Инициализация...");
     loadConfig(); // Загружаем настройки из NVS
-    
+    Serial.println("[AudioAnalyzer] Настройки загружены из NVS.");
 }
 
 void AudioAnalyzer::updateSignalStats(float currentLogPower) {

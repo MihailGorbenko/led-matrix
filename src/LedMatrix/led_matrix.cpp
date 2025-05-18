@@ -10,6 +10,7 @@ LedMatrix::LedMatrix()
 }
 
 void LedMatrix::begin() {
+    Serial.println("[LedMatrix] Инициализация...");
     FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUM_LEDS);
     // Загружаем настройки из NVS
     if (!loadConfig()) {
@@ -19,6 +20,7 @@ void LedMatrix::begin() {
     FastLED.setBrightness(brightness);
     clear();
     FastLED.show();
+    Serial.println("[LedMatrix] Инициализация завершена.");
 }
 
 int LedMatrix::XY(int x, int y) {
