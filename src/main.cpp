@@ -5,7 +5,8 @@
 #include "LedMatrix/led_matrix.hpp"
 #include "AudioAnalyzer/audio_analyzer.hpp"
 #include "Animator/animator.hpp"
-#include "Animations/ColorAmplitude/color_amplitude.cpp" // Лучше .hpp, если есть
+#include "Animations/ColorAmplitude/color_amplitude.hpp" // Лучше .hpp, если есть
+#include "Animations/StarrySky/starry_sky.hpp" // добавить include
 
 LedMatrix matrix;
 AudioAnalyzer analyzer;
@@ -28,23 +29,34 @@ void setup() {
     matrix.begin();
     analyzer.begin();
 
-    // Добавляем анимацию
+    // Добавляем анимации
     animator.addAnimation(new ColorAmplitudeAnimation());
+    animator.addAnimation(new StarrySkyAnimation());
+
     animator.begin();
 
-    // Установить чёрный цвет (0) через JSON
-    StaticJsonDocument<64> doc2;
-    doc2["color"]["value"] = 0x000000; // Чёрный
-    animator.getCurrentAnimation()->fromJSON(doc2.as<JsonObject>());
-    Serial.println("[TEST] Применён JSON-конфиг для colorAmplitude (чёрный)");
+    // Пример выбора starrySky через JSON:
+    StaticJsonDocument<128> doc;
+    doc["starrySky"]["starColor"]["value"] = 0xC800FF; // сиреневый цвет
+    doc["starrySky"]["starsPercent"]["value"] = 50;
+    doc["currentAnimationType"] = "starrySky";
+    animator.fromJSON(doc.as<JsonObject>());
+    Serial.println("[TEST] Выбрана анимация starrySky");
 
-    // Имитация выбора анимации через JSON (как будто пользователь выбрал её в веб-интерфейсе)
-    StaticJsonDocument<64> doc3;
-    doc3["currentAnimationType"] = "colorAmplitude";
-    animator.fromJSON(doc3.as<JsonObject>());
-    Serial.println("[TEST] Выбрана анимация colorAmplitude");
+    // Компонуем схемы в один JSON-объект
+    StaticJsonDocument<4096> allSchema;
+    JsonObject animatorSchema = allSchema.createNestedObject("animator");
+    animator.getJsonSchema(animatorSchema);
 
+    JsonObject matrixSchema = allSchema.createNestedObject("ledMatrix");
+    matrix.getJsonSchema(matrixSchema);
 
+    JsonObject analyzerSchema = allSchema.createNestedObject("audioAnalyzer");
+    analyzer.getJsonSchema(analyzerSchema);
+
+    // Выводим общий JSON-объект в Serial
+    Serial.println("[SCHEMA] All modules:");
+    serializeJsonPretty(allSchema, Serial);
 }
 
 void loop() {

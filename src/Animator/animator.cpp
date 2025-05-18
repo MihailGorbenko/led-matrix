@@ -72,8 +72,11 @@ void Animator::getJsonSchema(JsonObject& obj) const {
 bool Animator::fromJSON(const JsonObject& obj) {
     if (obj.containsKey("currentAnimationType")) {
         AnimationType type = animationTypeFromString(obj["currentAnimationType"]);
-        Serial.printf("[Animator] fromJSON: выбор анимации %s\n", animationTypeToString(type));
         startAnimation(type);
+    }
+    // Применяем настройки к текущей анимации
+    if (current && obj.containsKey(current->getModuleName())) {
+        current->fromJSON(obj[current->getModuleName()]);
     }
     return true;
 }
