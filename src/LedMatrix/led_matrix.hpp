@@ -40,6 +40,8 @@ public:
     bool fromJSON(const JsonObject& obj) override;
     /// Сбросить настройки к значениям по умолчанию, вернуть true при успехе
     bool resetConfig() override;
+    /// Сохранить настройки в JSON-объект
+   
 };
 
 #endif // LED_MATRIX_HPP

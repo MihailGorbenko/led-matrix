@@ -30,7 +30,7 @@ bool Animator::startAnimation(AnimationType type) {
         if (anim->getType() == type) {
             current = anim;
             currentAnimType = type;
-            saveConfig();
+             saveConfig(); // ← УДАЛИТЬ или закомментировать!
             Serial.printf("[Animator] Запущена анимация: %s\n", anim->getModuleName());
             return true;
         }
@@ -53,7 +53,7 @@ void Animator::animTaskFunc(void* param) {
 void Animator::begin() {
     Serial.println("[Animator] begin()");
     startAnimation(currentAnimType);
-    xTaskCreatePinnedToCore(animTaskFunc, "AnimTask", 4096, this, 1, &animTask, 1);
+    xTaskCreatePinnedToCore(animTaskFunc, "AnimTask", 8192, this, 1, &animTask, 1);
     Serial.println("[Animator] Анимация и задача запущены");
 }
 
@@ -68,6 +68,8 @@ void Animator::getJsonSchema(JsonObject& obj) const {
     obj["currentAnimationType"] = animationTypeToString(currentAnimType);
     Serial.println("[Animator] Схема JSON сформирована");
 }
+
+
 
 bool Animator::fromJSON(const JsonObject& obj) {
     if (obj.containsKey("currentAnimationType")) {

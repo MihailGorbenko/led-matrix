@@ -28,10 +28,12 @@ public:
     // JSON API
     void getJsonSchema(JsonObject& obj) const override;
     bool fromJSON(const JsonObject& obj) override;
+   
 
     Animation* getCurrentAnimation() const { return current; }
     LedMatrix* getMatrix() const { return matrix; }
     AudioAnalyzer* getAudioAnalyzer() const { return audio; }
+    const std::vector<Animation*>& getAnimations() const { return animations; }
 
 private:
     static void animTaskFunc(void* param);
