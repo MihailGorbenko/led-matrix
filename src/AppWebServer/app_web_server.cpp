@@ -1,5 +1,6 @@
 #include "app_web_server.hpp"
 #include <SPIFFS.h>
+#include <ArduinoJson.h>
 
 AppWebServer::AppWebServer(Animator* animator, LedMatrix* matrix, AudioAnalyzer* analyzer)
     : server(), animator(animator), matrix(matrix), analyzer(analyzer) {}
@@ -77,9 +78,9 @@ void AppWebServer::handleSafariPinnedTab() {
 }
 
 void AppWebServer::handleGetConfig() {
-    StaticJsonDocument<4096> doc;
+    DynamicJsonDocument doc(16384); // или больше, если нужно
     JsonObject animatorObj = doc.createNestedObject("animator");
-    animator->getJsonSchema(animatorObj); // ← Должно быть toJSON!
+    animator->getJsonSchema(animatorObj);
     JsonObject matrixObj = doc.createNestedObject("ledMatrix");
     matrix->getJsonSchema(matrixObj);
     JsonObject analyzerObj = doc.createNestedObject("audioAnalyzer");
@@ -94,7 +95,7 @@ void AppWebServer::handleSetConfig() {
         server.send(400, "application/json", "{\"error\":\"No JSON body\"}");
         return;
     }
-    StaticJsonDocument<4096> doc;
+    DynamicJsonDocument doc(16384);
     DeserializationError err = deserializeJson(doc, server.arg("plain"));
     if (err) {
         server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
