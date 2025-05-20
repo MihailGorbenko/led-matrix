@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>LED Matrix Control Panel</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <style>
     html, body {
       height: 100%;
@@ -197,20 +199,17 @@
           config.animator.animations.map(a =>
             `<div class="anim-tab${a.type === currentAnim ? ' active' : ''}" onclick="switchAnim('${a.type}')">${a.moduleLabel}</div>`
           ).join('') + `</div>`;
-        let animSelect = `<label>Текущая анимация:
-          <select class="select" onchange="switchAnim(this.value)">
-            ${config.animator.animations.map(a =>
-              `<option value="${a.type}"${a.type === currentAnim ? ' selected' : ''}>${a.moduleLabel}</option>`
-            ).join('')}
-          </select>
-        </label>`;
         let settingsHtml = renderSettingsForm(anim.settings, 'animator', anim.moduleName);
         let resetBtn = `<button class="reset-btn" style="background:#8e44ad" onclick="resetAnimation('${anim.moduleName}')">Сбросить настройки анимации</button>`;
-        document.getElementById('tab-content').innerHTML = animTabs + animSelect + settingsHtml + resetBtn;
+        document.getElementById('tab-content').innerHTML = animTabs + settingsHtml + resetBtn;
       } else if (currentTab === 'ledMatrix') {
-        document.getElementById('tab-content').innerHTML = renderSettingsForm(config.ledMatrix.settings, 'ledMatrix');
+        document.getElementById('tab-content').innerHTML =
+          renderSettingsForm(config.ledMatrix.settings, 'ledMatrix') +
+          `<button class="reset-btn" style="background:#2980b9" onclick="resetLedMatrix()">Сбросить настройки матрицы</button>`;
       } else if (currentTab === 'audioAnalyzer') {
-        document.getElementById('tab-content').innerHTML = renderSettingsForm(config.audioAnalyzer.settings, 'audioAnalyzer');
+        document.getElementById('tab-content').innerHTML =
+          renderSettingsForm(config.audioAnalyzer.settings, 'audioAnalyzer') +
+          `<button class="reset-btn" style="background:#16a085" onclick="resetAudioAnalyzer()">Сбросить настройки аудиоанализатора</button>`;
       }
     }
     function renderSettingsForm(settings, module, animName) {
@@ -218,19 +217,20 @@
       return settings.map(setting => {
         let val = setting.value;
         let id = `${module}_${animName || ''}_${setting.name}`;
-        if (setting.type === 'int' && setting.max > 255) {
-          // Цвет
-          return `<div class="setting">
-            <label for="${id}">${setting.label}</label>
-            <input type="color" id="${id}" class="color-input" value="#${val.toString(16).padStart(6, '0')}" onchange="onColorChange('${module}','${animName}','${setting.name}',this.value)">
+        // Красивое горизонтальное выравнивание label и color picker
+        if (
+          (setting.name.toLowerCase().includes('color') || setting.label.toLowerCase().includes('цвет')) &&
+          setting.type === 'int'
+        ) {
+          return `<div class="setting" style="display:flex;align-items:center;gap:1em;">
+            <label for="${id}" style="font-size:1.1em;flex:1 1 0;">${setting.label}</label>
+            <input type="color" id="${id}" class="color-input" style="width:60px;height:40px;flex-shrink:0;" value="#${val.toString(16).padStart(6, '0')}" onchange="onColorChange('${module}','${animName}','${setting.name}',this.value)">
           </div>`;
         } else if (setting.type === 'int' || setting.type === 'float') {
           return `<div class="setting">
             <label for="${id}">${setting.label}: <span id="${id}_val">${val}</span></label>
             <input type="range" id="${id}" class="slider" min="${setting.min}" max="${setting.max}" step="${setting.step}" value="${val}"
               oninput="document.getElementById('${id}_val').innerText=this.value"
-              onchange="onSliderChange('${module}','${animName}','${setting.name}',this.value)">
-            <input type="number" min="${setting.min}" max="${setting.max}" step="${setting.step}" value="${val}"
               onchange="onSliderChange('${module}','${animName}','${setting.name}',this.value)">
           </div>`;
         }
@@ -269,6 +269,14 @@
       await fetch('/api/reset/animation?name=' + encodeURIComponent(name), { method: 'POST' });
       fetchConfig();
     }
+    async function resetLedMatrix() {
+      await fetch('/api/reset/ledMatrix', { method: 'POST' });
+      fetchConfig();
+    }
+    async function resetAudioAnalyzer() {
+      await fetch('/api/reset/audioAnalyzer', { method: 'POST' });
+      fetchConfig();
+    }
     async function updateConfig(module, data) {
       await fetch('/api/config', {
         method: 'POST',
@@ -283,6 +291,8 @@
     window.onSliderChange = onSliderChange;
     window.resetAll = resetAll;
     window.resetAnimation = resetAnimation;
+    window.resetLedMatrix = resetLedMatrix;
+    window.resetAudioAnalyzer = resetAudioAnalyzer;
 
     fetchConfig();
   </script>

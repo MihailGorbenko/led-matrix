@@ -6,11 +6,21 @@ AppWebServer::AppWebServer(Animator* animator, LedMatrix* matrix, AudioAnalyzer*
 
 void AppWebServer::begin(uint16_t port) {
     server.on("/", [this]() { handleRoot(); });
+    server.on("/favicon.ico", [this]() { handleFavicon(); });
+    server.on("/apple-touch-icon.png", [this]() { handleAppleTouchIcon(); });
+    server.on("/apple-touch-icon-precomposed.png", [this]() { handleAppleTouchIcon(); });
+    server.on("/manifest.json", [this]() { handleManifest(); });
+    server.on("/site.webmanifest", [this]() { handleManifest(); });
+    server.on("/robots.txt", [this]() { handleRobots(); });
+    server.on("/browserconfig.xml", [this]() { handleBrowserConfig(); });
+    server.on("/safari-pinned-tab.svg", [this]() { handleSafariPinnedTab(); });
     server.on("/api/config", HTTP_GET, [this]() { handleGetConfig(); });
     server.on("/api/config", HTTP_POST, [this]() { handleSetConfig(); });
     server.on("/api/schema", HTTP_GET, [this]() { handleGetSchema(); });
     server.on("/api/reset", HTTP_POST, [this]() { handleResetConfig(); });
     server.on("/api/reset/animation", HTTP_POST, [this]() { handleResetAnimation(); }); // добавьте эту строку
+    server.on("/api/reset/ledMatrix", HTTP_POST, [this]() { handleResetMatrix(); });
+    server.on("/api/reset/audioAnalyzer", HTTP_POST, [this]() { handleResetAudioAnalyzer(); });
     server.onNotFound([this]() { handleNotFound(); });
     server.begin(port);
 }
@@ -20,17 +30,50 @@ void AppWebServer::handleClient() {
 }
 
 void AppWebServer::handleRoot() {
-    // Отдаём index.html из SPIFFS/LittleFS, если он есть
-    if (SPIFFS.begin(true)) {
-        File file = SPIFFS.open("/index.html", "r");
-        if (file) {
-            server.streamFile(file, "text/html");
-            file.close();
-            return;
-        }
+    File file = SPIFFS.open("/index.html", "r");
+    if (file) {
+        server.streamFile(file, "text/html");
+        file.close();
+        return;
     }
     // Если файла нет — отдаём заглушку
     server.send(200, "text/html", "<!DOCTYPE html><html><body><h1>index.html not found</h1></body></html>");
+}
+
+void AppWebServer::handleFavicon() {
+    File file = SPIFFS.open("/favicon.ico", "r");
+    if (file) {
+        server.streamFile(file, "image/x-icon");
+        file.close();
+        return;
+    }
+    server.send(404, "text/plain", "Not found");
+}
+
+void AppWebServer::handleAppleTouchIcon() {
+    File file = SPIFFS.open("/apple-touch-icon.png", "r");
+    if (file) {
+        server.streamFile(file, "image/png");
+        file.close();
+        return;
+    }
+    server.send(404, "text/plain", "Not found");
+}
+
+void AppWebServer::handleManifest() {
+    server.send(404, "application/json", "{\"error\":\"No manifest\"}");
+}
+
+void AppWebServer::handleRobots() {
+    server.send(200, "text/plain", "User-agent: *\nDisallow:\n");
+}
+
+void AppWebServer::handleBrowserConfig() {
+    server.send(404, "text/xml", "<!-- no browserconfig -->");
+}
+
+void AppWebServer::handleSafariPinnedTab() {
+    server.send(404, "image/svg+xml", "<svg></svg>");
 }
 
 void AppWebServer::handleGetConfig() {
@@ -106,6 +149,22 @@ void AppWebServer::handleResetAnimation() {
         }
     }
     server.send(404, "application/json", "{\"error\":\"Animation not found\"}");
+}
+
+void AppWebServer::handleResetMatrix() {
+    if (matrix->resetConfig()) {
+        server.send(200, "application/json", "{\"status\":\"reset ok\"}");
+    } else {
+        server.send(500, "application/json", "{\"status\":\"reset failed\"}");
+    }
+}
+
+void AppWebServer::handleResetAudioAnalyzer() {
+    if (analyzer->resetConfig()) {
+        server.send(200, "application/json", "{\"status\":\"reset ok\"}");
+    } else {
+        server.send(500, "application/json", "{\"status\":\"reset failed\"}");
+    }
 }
 
 void AppWebServer::handleNotFound() {

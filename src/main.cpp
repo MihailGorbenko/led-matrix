@@ -16,9 +16,20 @@ AudioAnalyzer analyzer;
 Animator animator(&matrix, &analyzer);
 AppWebServer webServer(&animator, &matrix, &analyzer);
 
-// Подключение к Wi-Fi
+// Подключение к Wi-Fi с ручным IP
 void initWiFiConnection() {
     Serial.printf("[WiFi] Connecting to SSID: %s\n", WIFI_SSID);
+
+    // Запрашиваем статический IP
+    IPAddress local_IP(WIFI_LOCAL_IP);
+    IPAddress gateway(WIFI_GATEWAY);
+    IPAddress subnet(WIFI_SUBNET);
+    IPAddress dns(WIFI_DNS);
+
+    if (!WiFi.config(local_IP, gateway, subnet, dns)) {
+        Serial.println("[WiFi] Failed to configure static IP");
+    }
+
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     unsigned long startAttemptTime = millis();
@@ -69,8 +80,6 @@ void setup() {
     animator.addAnimation(new StarrySkyAnimation());
 
     animator.begin();
-
-   
 
     // --- Запуск веб-сервера ---
     webServer.begin(80);

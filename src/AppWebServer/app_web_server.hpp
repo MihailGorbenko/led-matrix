@@ -25,4 +25,14 @@ private:
     void handleNotFound();
     void handleResetConfig();
     void handleResetAnimation();
+    void handleResetMatrix();
+    void handleResetAudioAnalyzer();
+    void handleFavicon();
+    void handleAppleTouchIcon();
+
+    // Добавьте заглушки для часто запрашиваемых файлов
+    void handleManifest();
+    void handleRobots();
+    void handleBrowserConfig();
+    void handleSafariPinnedTab();
 };
