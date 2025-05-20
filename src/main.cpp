@@ -8,6 +8,12 @@
 #include "Animator/animator.hpp"
 #include "Animations/ColorAmplitude/color_amplitude.hpp"
 #include "Animations/StarrySky/starry_sky.hpp"
+#include "Animations/Wave/wave_animation.hpp"
+#include "Animations/PulsingRectangle/pulsing_rectangle_animation.hpp"
+#include "Animations/LiveFire/live_fire_animation.hpp"
+#include "Animations/Snow/snow_animation.hpp"
+#include "Animations/Lightning/lightning_animation.hpp"
+#include "Animations/MatrixRain/matrix_rain_animation.hpp"
 #include "AppWebServer/app_web_server.hpp"
 #include <SPIFFS.h>
 
@@ -78,6 +84,12 @@ void setup() {
 
     animator.addAnimation(new ColorAmplitudeAnimation());
     animator.addAnimation(new StarrySkyAnimation());
+    animator.addAnimation(new WaveAnimation());
+    animator.addAnimation(new PulsingRectangle());
+    animator.addAnimation(new LiveFire());
+    animator.addAnimation(new SnowAnimation());
+    animator.addAnimation(new LightningAnimation());
+    animator.addAnimation(new MatrixRainAnimation());
 
     animator.begin();
 

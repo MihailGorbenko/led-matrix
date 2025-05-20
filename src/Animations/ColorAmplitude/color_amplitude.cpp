@@ -8,8 +8,8 @@
 
 ColorAmplitudeAnimation::ColorAmplitudeAnimation()
     : Animation("colorAmplitude", "Цветная амплитуда"),
-      colorValue(0), // 0 = CRGB::Black, значит динамический цвет
-      colorSetting("color", "Цвет", &colorValue, "color_amp", 0, 0, 0xFFFFFF, 1)
+      colorValue(DEFAULT_COLOR_AMPLITUDE_COLOR),
+      colorSetting("color", "Цвет", &colorValue, "color_amp", DEFAULT_COLOR_AMPLITUDE_COLOR, 0, 0xFFFFFF, 1)
 {
     registerSetting(&colorSetting);
     loadConfig(); // Загружаем настройки из NVS при инициализации
