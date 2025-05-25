@@ -47,8 +47,9 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
     CRGB* leds = matrix.getLeds();
 
     int maxStars = (width * height) * starsPercent / 100;
-    int farStars = maxStars * 2 / 3;
-    int nearStars = maxStars - farStars;
+    int farStars = maxStars * 3 / 5;
+    int midStars = maxStars * 1 / 5;
+    int nearStars = maxStars - farStars - midStars;
 
     int currentStars = stars.size();
     int maxTotalStars = width * height;
@@ -62,14 +63,18 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
                 s.x = random(0, width);
                 s.y = random(0, height);
                 s.phase = random8();
-                if (i < toAdd * 2 / 3) {
-                    s.speed = random(1, 2);
-                    s.maxBright = random(80, 150);
+                if (i < farStars) {
                     s.layer = 0;
-                } else {
-                    s.speed = random(2, 5);
-                    s.maxBright = random(150, 255);
+                    s.speed = 1;
+                    s.maxBright = random(50, 100);
+                } else if (i < farStars + midStars) {
                     s.layer = 1;
+                    s.speed = 2;
+                    s.maxBright = random(100, 180);
+                } else {
+                    s.layer = 2;
+                    s.speed = 3;
+                    s.maxBright = random(180, 255);
                 }
                 stars.push_back(s);
             }
@@ -88,17 +93,28 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
         float b = (sin8(s.phase) / 255.0f);
         uint8_t brightness = (uint8_t)(b * s.maxBright);
 
-        if (s.maxBright < 10 && random8() < 2) {
+        if (random8() < 2) {
+            int variation = random(-2, 3);
+            s.maxBright = constrain(s.maxBright + variation, 30, 255);
+        }
+
+        if (s.maxBright < 20 && random8() < 5) {
             s.x = random(0, width);
             s.y = random(0, height);
             s.phase = random8();
-            s.speed = (s.layer == 0) ? random(1, 2) : random(2, 5);
-            s.maxBright = (s.layer == 0) ? random(30, 100) : random(100, 255);
-        } else if (random8() < 1) {
-            if (s.maxBright > 10) s.maxBright--;
+            if (s.layer == 0) {
+                s.speed = 1;
+                s.maxBright = random(50, 100);
+            } else if (s.layer == 1) {
+                s.speed = 2;
+                s.maxBright = random(100, 180);
+            } else {
+                s.speed = 3;
+                s.maxBright = random(180, 255);
+            }
         }
 
-        float shift = skyShift * (s.layer == 0 ? 0.3f : 1.0f);
+        float shift = skyShift * (s.layer == 0 ? 0.2f : (s.layer == 1 ? 0.6f : 1.0f));
         int sx = ((int)(s.x + shift)) % width;
         if (sx < 0) sx += width;
 
