@@ -33,30 +33,33 @@
     }
     .tabs {
       display: flex;
+      justify-content: center;
+      gap: 0.3em;
       border-bottom: 1px solid #444;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+      margin-bottom: 1em;
+      overflow: hidden;
     }
     .tab {
-      flex: 1 1 0;
-      padding: 0.7em 0.2em;
-      cursor: pointer;
-      border: none;
-      background: none;
+      padding: 0.6em 1em;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid #444;
+      border-bottom: none;
+      background: #232346;
       color: #fff;
+      cursor: pointer;
       font-size: 1em;
-      min-width: 100px;
-      text-align: center;
-      transition: color 0.2s;
-      outline: none;
+      transition: all 0.2s;
+    }
+    .tab:hover {
+      background: #2c2c5a;
     }
     .tab.active {
-      border-bottom: 3px solid #8e44ad;
-      color: #8e44ad;
+      background: #8e44ad;
+      color: #fff;
       font-weight: bold;
     }
     .tab-content {
-      margin-top: 1.2em;
+      margin-top: 0;
       padding: 0 0.3em;
     }
     .setting {
@@ -120,9 +123,9 @@
       margin-bottom: 1em;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;        /* Firefox */
+      scrollbar-width: none;
     }
-    .anim-tabs::-webkit-scrollbar {  /* Chrome, Safari */
+    .anim-tabs::-webkit-scrollbar {
       display: none;
     }
     .anim-tab {
@@ -153,7 +156,7 @@
       border-radius: 0;
       position: relative;
       top: 0;
-      margin: 0 0 1.2em 0; /* нижний отступ между полосой и параметрами */
+      margin: 0 0 1.2em 0;
     }
     @media (max-width: 600px) {
       h1 { font-size: 1.1em; }
@@ -164,12 +167,13 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>LED Matrix Control Panel</h1>
     <div class="tabs" id="tabs"></div>
     <div class="tab-content" id="tab-content"></div>
-    <button class="reset-btn" onclick="resetAll()">Сбросить все настройки</button>
+    <button class="reset-btn reset-red" onclick="resetAll()">Сбросить все настройки</button>
   </div>
   <script>
     let config = {};
@@ -183,6 +187,7 @@
       renderTabs();
       renderTabContent();
     }
+
     function renderTabs() {
       const tabs = [
         { key: 'animator', label: 'Анимации' },
@@ -193,17 +198,20 @@
         `<button class="tab${currentTab === tab.key ? ' active' : ''}" onclick="switchTab('${tab.key}')">${tab.label}</button>`
       ).join('');
     }
+
     function switchTab(tab) {
       currentTab = tab;
       renderTabs();
       renderTabContent();
     }
+
     function switchAnim(animType) {
       config.animator.currentAnimationType = animType;
       currentAnim = animType;
       updateConfig('animator', { currentAnimationType: animType });
       renderTabContent();
     }
+
     function renderTabContent() {
       if (!config.animator) return;
       if (currentTab === 'animator') {
@@ -215,21 +223,21 @@
             `<div class="anim-tab${a.type === currentAnim ? ' active' : ''}" onclick="switchAnim('${a.type}')">${a.moduleLabel}</div>`
           ).join('') + `</div><div class="anim-tabs-bar"></div>`;
         let settingsHtml = renderSettingsForm(anim.settings, 'animator', anim.moduleName);
-        let resetBtn = `<button class="reset-btn" style="background:#8e44ad" onclick="resetAnimation('${anim.moduleName}')">Сбросить настройки анимации</button>`;
+        let resetBtn = `<button class="reset-btn reset-purple" onclick="resetAnimation('${anim.moduleName}')">Сбросить настройки анимации</button>`;
         document.getElementById('tab-content').innerHTML = animTabs + settingsHtml + resetBtn;
       } else if (currentTab === 'ledMatrix') {
         document.getElementById('tab-content').innerHTML =
           renderSettingsForm(config.ledMatrix.settings, 'ledMatrix') +
-          `<button class="reset-btn" style="background:#2980b9" onclick="resetLedMatrix()">Сбросить настройки матрицы</button>`;
+          `<button class="reset-btn reset-blue" onclick="resetLedMatrix()">Сбросить настройки матрицы</button>`;
       } else if (currentTab === 'audioAnalyzer') {
         document.getElementById('tab-content').innerHTML =
           renderSettingsForm(config.audioAnalyzer.settings, 'audioAnalyzer') +
-          `<button class="reset-btn" style="background:#16a085" onclick="resetAudioAnalyzer()">Сбросить настройки аудиоанализатора</button>`;
+          `<button class="reset-btn reset-green" onclick="resetAudioAnalyzer()">Сбросить настройки аудиоанализатора</button>`;
       }
     }
+
     function renderSettingsForm(settings, module, animName) {
       if (!settings) return '';
-      // Сортируем: color/цвет — первым, остальные — после
       settings = [...settings].sort((a, b) => {
         const isColorA = a.name.toLowerCase().includes('color') || a.label.toLowerCase().includes('цвет');
         const isColorB = b.name.toLowerCase().includes('color') || b.label.toLowerCase().includes('цвет');
@@ -240,21 +248,16 @@
       return settings.map(setting => {
         let val = setting.value;
         let id = `${module}_${animName || ''}_${setting.name}`;
-        // ДОБАВЬТЕ ЭТО ДЛЯ BOOL:
         if (setting.type === 'bool') {
           return `<div class="setting">
             <label for="${id}" style="font-size:1.1em;">${setting.label}</label>
             <input type="checkbox" id="${id}" ${val ? 'checked' : ''} onchange="onBoolChange('${module}','${animName}','${setting.name}',this.checked)">
           </div>`;
         }
-        // Красивое горизонтальное выравнивание label и color picker
-        if (
-          (setting.name.toLowerCase().includes('color') || setting.label.toLowerCase().includes('цвет')) &&
-          setting.type === 'int'
-        ) {
+        if ((setting.name.toLowerCase().includes('color') || setting.label.toLowerCase().includes('цвет')) && setting.type === 'int') {
           return `<div class="setting" style="display:flex;align-items:center;gap:1em;">
             <label for="${id}" style="font-size:1.1em;flex:1 1 0;">${setting.label}</label>
-            <input type="color" id="${id}" class="color-input" style="width:60px;height:40px;flex-shrink:0;" value="#${val.toString(16).padStart(6, '0')}" onchange="onColorChange('${module}','${animName}','${setting.name}',this.value)">
+            <input type="color" id="${id}" class="color-input" value="#${val.toString(16).padStart(6, '0')}" onchange="onColorChange('${module}','${animName}','${setting.name}',this.value)">
           </div>`;
         } else if (setting.type === 'int' || setting.type === 'float') {
           return `<div class="setting">
@@ -267,6 +270,7 @@
         return '';
       }).join('');
     }
+
     async function onColorChange(module, animName, name, value) {
       let intVal = parseInt(value.replace('#',''), 16);
       let payload = {};
@@ -279,6 +283,7 @@
       await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       fetchConfig();
     }
+
     async function onSliderChange(module, animName, name, value) {
       let numVal = Number(value);
       let payload = {};
@@ -291,6 +296,7 @@
       await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       fetchConfig();
     }
+
     async function onBoolChange(module, animName, name, value) {
       let payload = {};
       if (module === 'animator') {
@@ -302,6 +308,7 @@
       await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       fetchConfig();
     }
+
     async function resetAll() {
       await fetch('/api/reset', { method: 'POST' });
       fetchConfig();
@@ -326,6 +333,7 @@
       });
       fetchConfig();
     }
+
     window.switchTab = switchTab;
     window.switchAnim = switchAnim;
     window.onColorChange = onColorChange;
