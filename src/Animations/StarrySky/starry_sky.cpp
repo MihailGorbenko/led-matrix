@@ -64,11 +64,11 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
                 s.phase = random8();
                 if (i < toAdd * 2 / 3) {
                     s.speed = random(1, 2);
-                    s.maxBright = random(30, 100);
+                    s.maxBright = random(80, 150);
                     s.layer = 0;
                 } else {
                     s.speed = random(2, 5);
-                    s.maxBright = random(100, 255);
+                    s.maxBright = random(150, 255);
                     s.layer = 1;
                 }
                 stars.push_back(s);
