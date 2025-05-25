@@ -51,28 +51,29 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
     int nearStars = maxStars - farStars;
 
     int currentStars = stars.size();
+    int maxTotalStars = width * height;
 
-    // Добавляем или удаляем звезды до нужного количества
-    if (currentStars < maxStars) {
+    // Добавляем звезды, если нужно
+    if (currentStars < maxTotalStars) {
         int toAdd = maxStars - currentStars;
-        for (int i = 0; i < toAdd; ++i) {
-            Star s;
-            s.x = random(0, width);
-            s.y = random(0, height);
-            s.phase = random8();
-            if (i < toAdd * 2 / 3) {
-                s.speed = random(1, 2);
-                s.maxBright = random(30, 100);
-                s.layer = 0;
-            } else {
-                s.speed = random(2, 5);
-                s.maxBright = random(100, 255);
-                s.layer = 1;
+        if (toAdd > 0) {
+            for (int i = 0; i < toAdd; ++i) {
+                Star s;
+                s.x = random(0, width);
+                s.y = random(0, height);
+                s.phase = random8();
+                if (i < toAdd * 2 / 3) {
+                    s.speed = random(1, 2);
+                    s.maxBright = random(30, 100);
+                    s.layer = 0;
+                } else {
+                    s.speed = random(2, 5);
+                    s.maxBright = random(100, 255);
+                    s.layer = 1;
+                }
+                stars.push_back(s);
             }
-            stars.push_back(s);
         }
-    } else if (currentStars > maxStars) {
-        stars.resize(maxStars);
     }
 
     fill_solid(leds, width * height, CRGB::Black);
@@ -80,7 +81,9 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
     static float skyShift = 0;
     skyShift += 0.01f;
 
-    for (auto& s : stars) {
+    for (int i = 0; i < maxStars && i < stars.size(); ++i) {
+        auto& s = stars[i];
+
         s.phase += s.speed;
         float b = (sin8(s.phase) / 255.0f);
         uint8_t brightness = (uint8_t)(b * s.maxBright);
