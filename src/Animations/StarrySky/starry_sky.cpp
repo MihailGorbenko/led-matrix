@@ -50,32 +50,29 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
     int farStars = maxStars * 2 / 3;
     int nearStars = maxStars - farStars;
 
-    static int previousMaxStars = 0;
-    if ((int)stars.size() != maxStars || previousMaxStars != maxStars) {
-        previousMaxStars = maxStars;
-        stars.clear();
+    int currentStars = stars.size();
 
-        for (int i = 0; i < farStars; ++i) {
+    // Добавляем или удаляем звезды до нужного количества
+    if (currentStars < maxStars) {
+        int toAdd = maxStars - currentStars;
+        for (int i = 0; i < toAdd; ++i) {
             Star s;
             s.x = random(0, width);
             s.y = random(0, height);
             s.phase = random8();
-            s.speed = random(1, 2);
-            s.maxBright = random(30, 100);
-            s.layer = 0;
+            if (i < toAdd * 2 / 3) {
+                s.speed = random(1, 2);
+                s.maxBright = random(30, 100);
+                s.layer = 0;
+            } else {
+                s.speed = random(2, 5);
+                s.maxBright = random(100, 255);
+                s.layer = 1;
+            }
             stars.push_back(s);
         }
-
-        for (int i = 0; i < nearStars; ++i) {
-            Star s;
-            s.x = random(0, width);
-            s.y = random(0, height);
-            s.phase = random8();
-            s.speed = random(2, 5);
-            s.maxBright = random(100, 255);
-            s.layer = 1;
-            stars.push_back(s);
-        }
+    } else if (currentStars > maxStars) {
+        stars.resize(maxStars);
     }
 
     fill_solid(leds, width * height, CRGB::Black);
@@ -175,6 +172,5 @@ void StarrySkyAnimation::render(LedMatrix& matrix, AudioAnalyzer* /*audio*/) {
         }
     }
 
-    // Применяем все изменения к матрице
     matrix.update();
 }
