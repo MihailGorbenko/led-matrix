@@ -47,14 +47,22 @@
       font-size: 1em;
       min-width: 100px;
       text-align: center;
-      transition: color 0.2s;
+      transition: color 0.2s, box-shadow 0.1s, transform 0.1s;
       outline: none;
+      user-select: none;
     }
     .tab.active {
       border-bottom: 3px solid #8e44ad;
       color: #8e44ad;
       font-weight: bold;
     }
+    /* Визуализация нажатия для .tab */
+    .tab:active {
+      color: #a370d9;
+      transform: translateY(2px);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    }
+
     .tab-content {
       margin-top: 1.2em;
       padding: 0 0.3em;
@@ -98,10 +106,18 @@
       display: block;
       margin-left: auto;
       margin-right: auto;
+      transition: background 0.15s, box-shadow 0.1s, transform 0.1s;
+      user-select: none;
     }
     .reset-btn:hover, .reset-btn:active {
       background: #c0392b;
     }
+    /* Визуализация нажатия для reset-btn */
+    .reset-btn:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.6);
+    }
+
     .select, input[type="number"] {
       padding: 0.5em;
       border-radius: 4px;
@@ -140,12 +156,21 @@
       text-align: center;
       outline: none;
       white-space: nowrap;
+      transition: background 0.15s, box-shadow 0.1s, transform 0.1s;
+      user-select: none;
     }
     .anim-tab.active {
       background: #8e44ad;
       color: #fff;
       font-weight: bold;
     }
+    /* Визуализация нажатия для .anim-tab */
+    .anim-tab:active {
+      background: #a370d9;
+      transform: translateY(2px);
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+    }
+
     .anim-tabs-bar {
       width: 100%;
       height: 2px;
@@ -215,127 +240,108 @@
             `<div class="anim-tab${a.type === currentAnim ? ' active' : ''}" onclick="switchAnim('${a.type}')">${a.moduleLabel}</div>`
           ).join('') + `</div><div class="anim-tabs-bar"></div>`;
         let settingsHtml = renderSettingsForm(anim.settings, 'animator', anim.moduleName);
-        let resetBtn = `<button class="reset-btn" style="background:#8e44ad" onclick="resetAnimation('${anim.moduleName}')">Сбросить настройки анимации</button>`;
-        document.getElementById('tab-content').innerHTML = animTabs + settingsHtml + resetBtn;
+        let resetHtml = `<button class="reset-btn" onclick="resetAnimation('${anim.moduleName}')">Сбросить настройки анимации</button>`;
+        document.getElementById('tab-content').innerHTML = animTabs + settingsHtml + resetHtml;
       } else if (currentTab === 'ledMatrix') {
-        document.getElementById('tab-content').innerHTML =
-          renderSettingsForm(config.ledMatrix.settings, 'ledMatrix') +
-          `<button class="reset-btn" style="background:#2980b9" onclick="resetLedMatrix()">Сбросить настройки матрицы</button>`;
+        let html = renderSettingsForm(config.ledMatrix.settings, 'ledMatrix', '');
+        html += `<button class="reset-btn" onclick="resetModule('ledMatrix')">Сбросить настройки матрицы</button>`;
+        document.getElementById('tab-content').innerHTML = html;
       } else if (currentTab === 'audioAnalyzer') {
-        document.getElementById('tab-content').innerHTML =
-          renderSettingsForm(config.audioAnalyzer.settings, 'audioAnalyzer') +
-          `<button class="reset-btn" style="background:#16a085" onclick="resetAudioAnalyzer()">Сбросить настройки аудиоанализатора</button>`;
+        let html = renderSettingsForm(config.audioAnalyzer.settings, 'audioAnalyzer', '');
+        html += `<button class="reset-btn" onclick="resetModule('audioAnalyzer')">Сбросить настройки аудиоанализа</button>`;
+        document.getElementById('tab-content').innerHTML = html;
       }
     }
-    function renderSettingsForm(settings, module, animName) {
-      if (!settings) return '';
-      // Сортируем: color/цвет — первым, остальные — после
-      settings = [...settings].sort((a, b) => {
-        const isColorA = a.name.toLowerCase().includes('color') || a.label.toLowerCase().includes('цвет');
-        const isColorB = b.name.toLowerCase().includes('color') || b.label.toLowerCase().includes('цвет');
-        if (isColorA && !isColorB) return -1;
-        if (!isColorA && isColorB) return 1;
-        return 0;
-      });
-      return settings.map(setting => {
-        let val = setting.value;
-        let id = `${module}_${animName || ''}_${setting.name}`;
-        // ДОБАВЬТЕ ЭТО ДЛЯ BOOL:
-        if (setting.type === 'bool') {
-          return `<div class="setting">
-            <label for="${id}" style="font-size:1.1em;">${setting.label}</label>
-            <input type="checkbox" id="${id}" ${val ? 'checked' : ''} onchange="onBoolChange('${module}','${animName}','${setting.name}',this.checked)">
+    function renderSettingsForm(settings, moduleKey, animModuleName) {
+      if (!settings) return '<p>Нет настроек.</p>';
+      return settings.map(s => {
+        let id = `${moduleKey}-${animModuleName}-${s.key}`;
+        if (s.type === 'number') {
+          return `
+          <div class="setting">
+            <label for="${id}">${s.label} (${s.min}..${s.max})</label>
+            <input type="range" id="${id}" min="${s.min}" max="${s.max}" step="${s.step || 1}" value="${s.value}"
+              class="slider"
+              onchange="updateSetting('${moduleKey}', '${animModuleName}', '${s.key}', this.value)" />
+            <input type="number" min="${s.min}" max="${s.max}" step="${s.step || 1}" value="${s.value}" 
+              style="width: 60px; margin-left: 0.7em;"
+              onchange="updateSetting('${moduleKey}', '${animModuleName}', '${s.key}', this.value)" />
           </div>`;
+        } else if (s.type === 'color') {
+          return `
+          <div class="setting">
+            <label for="${id}">${s.label}</label>
+            <input type="color" id="${id}" value="${s.value}" class="color-input" 
+              onchange="updateSetting('${moduleKey}', '${animModuleName}', '${s.key}', this.value)" />
+          </div>`;
+        } else if (s.type === 'select') {
+          let optionsHtml = s.options.map(o =>
+            `<option value="${o.value}"${o.value === s.value ? ' selected' : ''}>${o.label}</option>`).join('');
+          return `
+          <div class="setting">
+            <label for="${id}">${s.label}</label>
+            <select id="${id}" class="select" onchange="updateSetting('${moduleKey}', '${animModuleName}', '${s.key}', this.value)">
+              ${optionsHtml}
+            </select>
+          </div>`;
+        } else {
+          return '';
         }
-        // Красивое горизонтальное выравнивание label и color picker
-        if (
-          (setting.name.toLowerCase().includes('color') || setting.label.toLowerCase().includes('цвет')) &&
-          setting.type === 'int'
-        ) {
-          return `<div class="setting" style="display:flex;align-items:center;gap:1em;">
-            <label for="${id}" style="font-size:1.1em;flex:1 1 0;">${setting.label}</label>
-            <input type="color" id="${id}" class="color-input" style="width:60px;height:40px;flex-shrink:0;" value="#${val.toString(16).padStart(6, '0')}" onchange="onColorChange('${module}','${animName}','${setting.name}',this.value)">
-          </div>`;
-        } else if (setting.type === 'int' || setting.type === 'float') {
-          return `<div class="setting">
-            <label for="${id}">${setting.label}: <span id="${id}_val">${typeof val === 'number' && setting.type === 'float' ? val.toFixed(2) : val}</span></label>
-            <input type="range" id="${id}" class="slider" min="${setting.min}" max="${setting.max}" step="${setting.step}" value="${val}"
-              oninput="document.getElementById('${id}_val').innerText=${setting.type === 'float' ? 'Number(this.value).toFixed(2)' : 'this.value'}"
-              onchange="onSliderChange('${module}','${animName}','${setting.name}',this.value)">
-          </div>`;
-        }
-        return '';
       }).join('');
     }
-    async function onColorChange(module, animName, name, value) {
-      let intVal = parseInt(value.replace('#',''), 16);
-      let payload = {};
-      if (module === 'animator') {
-        payload[module] = {};
-        payload[module][animName] = { [name]: { value: intVal } };
+    function updateSetting(moduleKey, animModuleName, key, value) {
+      value = normalizeValue(value);
+      if (moduleKey === 'animator' && animModuleName) {
+        let anim = config.animator.animations.find(a => a.moduleName === animModuleName);
+        if (anim) {
+          let setting = anim.settings.find(s => s.key === key);
+          if (setting) {
+            setting.value = value;
+            updateConfig(moduleKey, {[animModuleName]: anim.settings});
+          }
+        }
       } else {
-        payload[module] = { [name]: { value: intVal } };
+        let modSettings = config[moduleKey]?.settings;
+        if (modSettings) {
+          let setting = modSettings.find(s => s.key === key);
+          if (setting) {
+            setting.value = value;
+            updateConfig(moduleKey, {settings: modSettings});
+          }
+        }
       }
-      await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      fetchConfig();
     }
-    async function onSliderChange(module, animName, name, value) {
-      let numVal = Number(value);
-      let payload = {};
-      if (module === 'animator') {
-        payload[module] = {};
-        payload[module][animName] = { [name]: { value: numVal } };
-      } else {
-        payload[module] = { [name]: { value: numVal } };
+    function normalizeValue(value) {
+      if (typeof value === 'string') {
+        if (!isNaN(value)) {
+          return Number(value);
+        }
+        return value;
       }
-      await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      fetchConfig();
+      return value;
     }
-    async function onBoolChange(module, animName, name, value) {
-      let payload = {};
-      if (module === 'animator') {
-        payload[module] = {};
-        payload[module][animName] = { [name]: { value } };
-      } else {
-        payload[module] = { [name]: { value } };
-      }
-      await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      fetchConfig();
+    async function updateConfig(moduleKey, data) {
+      await fetch(`/api/config/${moduleKey}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      });
+    }
+    async function resetModule(moduleKey) {
+      if (!confirm(`Сбросить настройки модуля "${moduleKey}" к значениям по умолчанию?`)) return;
+      await fetch(`/api/config/${moduleKey}/reset`, { method: 'POST' });
+      await fetchConfig();
+    }
+    async function resetAnimation(animModuleName) {
+      if (!confirm(`Сбросить настройки анимации "${animModuleName}" к значениям по умолчанию?`)) return;
+      await fetch(`/api/config/animator/reset/${animModuleName}`, { method: 'POST' });
+      await fetchConfig();
     }
     async function resetAll() {
-      await fetch('/api/reset', { method: 'POST' });
-      fetchConfig();
+      if (!confirm('Сбросить все настройки к значениям по умолчанию?')) return;
+      await fetch(`/api/config/reset`, { method: 'POST' });
+      await fetchConfig();
     }
-    async function resetAnimation(name) {
-      await fetch('/api/reset/animation?name=' + encodeURIComponent(name), { method: 'POST' });
-      fetchConfig();
-    }
-    async function resetLedMatrix() {
-      await fetch('/api/reset/ledMatrix', { method: 'POST' });
-      fetchConfig();
-    }
-    async function resetAudioAnalyzer() {
-      await fetch('/api/reset/audioAnalyzer', { method: 'POST' });
-      fetchConfig();
-    }
-    async function updateConfig(module, data) {
-      await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [module]: data })
-      });
-      fetchConfig();
-    }
-    window.switchTab = switchTab;
-    window.switchAnim = switchAnim;
-    window.onColorChange = onColorChange;
-    window.onSliderChange = onSliderChange;
-    window.onBoolChange = onBoolChange;
-    window.resetAll = resetAll;
-    window.resetAnimation = resetAnimation;
-    window.resetLedMatrix = resetLedMatrix;
-    window.resetAudioAnalyzer = resetAudioAnalyzer;
-
     fetchConfig();
   </script>
 </body>
